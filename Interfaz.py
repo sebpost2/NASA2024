@@ -17,8 +17,28 @@ def round_image_corners(image, radius):
     return rounded_image
 
 # Función para mostrar los créditos del proyecto
+# Función para mostrar los créditos del proyecto
 def show_credits():
-    messagebox.showinfo("Créditos", "Proyecto de Estimación de Poses\nDesarrollado por: [Fabian Concha, Justo Peres, Abimael Guzman, Giulia Nava, Sebastian Postigo, Gabriel Valdivia]")
+    # Crear una nueva ventana para los créditos
+    credits_window = tk.Toplevel(root)
+    credits_window.title("Créditos")
+    credits_window.geometry("400x300")
+    credits_window.configure(bg="#000033")
+    
+    # Crear un marco con bordes redondeados y fondo agradable
+    frame = ttk.Frame(credits_window, padding=20, bootstyle="primary", relief="solid", borderwidth=3)
+    frame.place(relx=0.5, rely=0.5, anchor="center")
+
+    # Nombres en lista
+    developers = ["Fabian Concha", "Justo Peres", "Abimael Guzman", "Giulia Nava", "Sebastian Postigo", "Gabriel Valdivia"]
+    for dev in developers:
+        dev_label = ttk.Label(frame, text=dev, font=("Helvetica", 12), foreground="white")
+        dev_label.pack(anchor="w", padx=10, pady=2)
+
+    # Botón de cerrar ventana
+    close_button = ttk.Button(frame, text="Cerrar", command=credits_window.destroy, bootstyle="danger")
+    close_button.pack(pady=(20, 0))
+
 
 # Función para mostrar información extra sobre el proyecto
 def show_info():
