@@ -2,15 +2,15 @@ import tkinter as tk
 from tkinter import messagebox
 import ttkbootstrap as ttk
 from PIL import Image, ImageTk, ImageDraw
+import cv2
+import mediapipe as mp
+import torch
 
 # Función para redondear las esquinas de una imagen
 def round_image_corners(image, radius):
-    # Crear una máscara circular
     mask = Image.new('L', image.size, 0)
     draw = ImageDraw.Draw(mask)
     draw.rounded_rectangle((0, 0, image.size[0], image.size[1]), radius=radius, fill=255)
-    
-    # Aplicar la máscara a la imagen
     rounded_image = Image.new('RGBA', image.size)
     rounded_image.paste(image, (0, 0), mask)
     return rounded_image
@@ -23,89 +23,99 @@ def show_credits():
 def show_info():
     messagebox.showinfo("Información del Proyecto", "Este proyecto utiliza OpenCV para capturar video y estimar poses corporales.")
 
-# Función para mostrar la ventana de estimación de poses
-def open_pose_estimation_window():
-    pose_window = tk.Toplevel(root)  # Crear una nueva ventana
-    pose_window.title("Estimación de Poses")
-    pose_window.geometry("300x800")  # Definir tamaño de la ventana
+# Función que inicia el código de tracking al hacer clic en Start
+def iniciar_deteccion():
+    root.destroy()  # Cerrar el menú principal
 
-    # Mensaje en la nueva ventana
-    label = ttk.Label(pose_window, text="Aquí habrá la estimación", font=("Helvetica", 14))
-    label.pack(pady=50)
+    # Cargar el modelo YOLOv5
+    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
+    yolo_model.classes = [0]  # Solo detectar personas
 
-    # Botón para cerrar la ventana
-    close_button = ttk.Button(pose_window, text="Cerrar", command=pose_window.destroy, style="danger.TButton")
-    close_button.pack(pady=10)
+    mp_drawing = mp.solutions.drawing_utils
+    mp_pose = mp.solutions.pose
+    cap = cv2.VideoCapture(0)
 
-# Función para crear botones con estilo similar a la imagen
+    with mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3) as pose:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            result = yolo_model(image)
+            image.flags.writeable = True
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            MARGIN = 10
+
+            for (xmin, ymin, xmax, ymax, confidence, clas) in result.xyxy[0].tolist():
+                crop_image = image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN]
+                crop_rgb = cv2.cvtColor(crop_image, cv2.COLOR_BGR2RGB)
+                results = pose.process(crop_rgb)
+
+                if results.pose_landmarks:
+                    mp_drawing.draw_landmarks(crop_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                                              mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+                                              mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
+
+                image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN] = crop_image
+
+            cv2.imshow('Detección de Personas y Pose en Tiempo Real', image)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# Función para crear botones con estilo
 def create_button(parent, text, command):
     style = ttk.Style()
-    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)  # Cambiar color de fondo aquí
+    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)
     button = ttk.Button(parent, text=text, command=command, style='my.TButton', width=15)
     button.pack(pady=5)
     return button
 
-# Función para mostrar el menú principal con diseño similar a la imagen
+# Función para mostrar el menú principal
 def show_main_menu():
-    # Limpiar la ventana principal
     for widget in root.winfo_children():
         widget.destroy()
 
-    # Cargar la imagen de fondo
-    bg_image = Image.open("C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/bckgrnd.jpg")
-    bg_image = bg_image.resize((1000, 700), Image.LANCZOS)  # Ajusta el tamaño de la imagen a la ventana
+    bg_image = Image.open("/home/sebpost02/Documents/NASA2024/NASA2024/bckgrnd.jpg")
+    bg_image = bg_image.resize((1000, 700), Image.LANCZOS)
     bg_image_tk = ImageTk.PhotoImage(bg_image)
-
-    # Crear una etiqueta para el fondo
     background_label = tk.Label(root, image=bg_image_tk)
-    background_label.image = bg_image_tk  # Mantener una referencia a la imagen
-    background_label.place(x=0, y=0, relwidth=1, relheight=1)  # Establecer la etiqueta para que cubra toda la ventana
+    background_label.image = bg_image_tk
+    background_label.place(x=0, y=0, relwidth=1, relheight=1)
 
-    # Títulos del menú principal sin fondo
-    title_label = ttk.Label(root, text="Galactic Games", font=("Sixtyfour Convergence", 35), foreground="#663399", background="")
+    title_label = ttk.Label(root, text="Galactic Games", font=("Sixtyfour Convergence", 35), foreground="#663399")
     title_label.pack()
-
-    title_label2 = ttk.Label(root, text="Fun in a Microgravity", font=("Sixtyfour Convergence", 40), foreground="#663399", background="")
+    title_label2 = ttk.Label(root, text="Fun in a Microgravity", font=("Sixtyfour Convergence", 40), foreground="#663399")
     title_label2.pack()
-
-    title_label3 = ttk.Label(root, text="Environment!", font=("Sixtyfour Convergence", 40), foreground="#663399", background="")
+    title_label3 = ttk.Label(root, text="Environment!", font=("Sixtyfour Convergence", 40), foreground="#663399")
     title_label3.pack()
 
-    # Marco para los botones
-    button_frame = ttk.Frame(root)  # No especificamos un estilo
+    button_frame = ttk.Frame(root)
     button_frame.pack(pady=20)
+    create_button(button_frame, "Start", iniciar_deteccion)  # Inicia la detección
+    create_button(button_frame, "More Info.", show_info)
+    create_button(button_frame, "Credits", show_credits)
 
-    # Botones del menú
-    create_button(button_frame, "Start", open_pose_estimation_window)  # Abre la ventana de estimación de poses
-    create_button(button_frame, "More Info.", show_info)  # Muestra información extra sobre el proyecto
-    create_button(button_frame, "Credits", show_credits)  # Muestra los créditos
-
-    # Cargar la imagen adicional debajo de los botones
-    img_path = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/logo.jpg"  # Cambia la ruta aquí
+    img_path = "/home/sebpost02/Documents/NASA2024/NASA2024/logo.jpg"
     img = Image.open(img_path)
-    img = img.resize((200, 200), Image.LANCZOS)  # Ajustar tamaño según sea necesario
-
-    # Redondear esquinas
-    img = round_image_corners(img, radius=30)  # Cambia el radio según lo que desees
-
+    img = img.resize((200, 200), Image.LANCZOS)
+    img = round_image_corners(img, radius=30)
     img_tk = ImageTk.PhotoImage(img)
-
-    # Etiqueta para mostrar la imagen
     image_label = ttk.Label(root, image=img_tk)
-    image_label.image = img_tk  # Mantener una referencia a la imagen
-    image_label.pack(pady=20)  # Ajustar el espacio vertical como sea necesario
+    image_label.image = img_tk
+    image_label.pack(pady=20)
 
 # Crear la interfaz gráfica
 def create_gui():
     global root
-    root = ttk.Window(themename="superhero")  # Ventana con estilo oscuro
+    root = ttk.Window(themename="superhero")
     root.title("Galactic Games: Fun in a Microgravity Environment!")
-    root.geometry("1000x700")  # Tamaño de la ventana
-
-    # Mostrar el menú principal al inicio
+    root.geometry("1000x700")
     show_main_menu()
-
-    # Ejecutar el bucle de la ventana
     root.mainloop()
 
 if __name__ == "__main__":
