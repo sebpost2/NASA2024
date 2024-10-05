@@ -5,6 +5,7 @@ from PIL import Image, ImageTk, ImageDraw
 import cv2
 import mediapipe as mp
 import torch
+import os
 
 # Función para redondear las esquinas de una imagen
 def round_image_corners(image, radius):
@@ -27,43 +28,52 @@ def show_info():
 def iniciar_deteccion():
     root.destroy()  # Cerrar el menú principal
 
-    # Cargar el modelo YOLOv5
-    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
-    yolo_model.classes = [0]  # Solo detectar personas
-
+    # Inicializar MediaPipe para la detección de poses
     mp_drawing = mp.solutions.drawing_utils
     mp_pose = mp.solutions.pose
+
+    # Iniciar la captura de video desde la cámara web
     cap = cv2.VideoCapture(0)
 
-    with mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3) as pose:
+    # Configuración del modelo de pose
+    with mp_pose.Pose(static_image_mode=False, 
+                      model_complexity=2, 
+                      enable_segmentation=False,
+                      min_detection_confidence=0.5,
+                      min_tracking_confidence=0.5) as pose:
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
+            # Convertir la imagen de BGR a RGB
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image.flags.writeable = False
-            result = yolo_model(image)
+            image.flags.writeable = False  # Marca la imagen como no editable
+
+            # Realizar la detección de la pose
+            results = pose.process(image)
+
+            # Marcar la imagen como editable nuevamente
             image.flags.writeable = True
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            MARGIN = 10
 
-            for (xmin, ymin, xmax, ymax, confidence, clas) in result.xyxy[0].tolist():
-                crop_image = image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN]
-                crop_rgb = cv2.cvtColor(crop_image, cv2.COLOR_BGR2RGB)
-                results = pose.process(crop_rgb)
+            # Dibujar las anotaciones de la pose en la imagen
+            if results.pose_landmarks:
+                for landmark in results.pose_landmarks.landmark:
+                    h, w, _ = image.shape
+                    cx, cy = int(landmark.x * w), int(landmark.y * h)
+                    cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
 
-                if results.pose_landmarks:
-                    mp_drawing.draw_landmarks(crop_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-                                              mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                                              mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
+                mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-                image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN] = crop_image
+            # Mostrar el video en tiempo real
+            cv2.imshow('Pose Estimation', image)
 
-            cv2.imshow('Detección de Personas y Pose en Tiempo Real', image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            if cv2.waitKey(5) & 0xFF == 27:  # Presiona 'Esc' para salir
                 break
 
+    # Liberar la captura y cerrar ventanas
     cap.release()
     cv2.destroyAllWindows()
 
@@ -80,7 +90,7 @@ def show_main_menu():
     for widget in root.winfo_children():
         widget.destroy()
 
-    bg_image = Image.open("/home/sebpost02/Documents/NASA2024/NASA2024/bckgrnd.jpg")
+    bg_image = Image.open("C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/bckgrnd.jpg")
     bg_image = bg_image.resize((1000, 700), Image.LANCZOS)
     bg_image_tk = ImageTk.PhotoImage(bg_image)
     background_label = tk.Label(root, image=bg_image_tk)
@@ -100,7 +110,7 @@ def show_main_menu():
     create_button(button_frame, "More Info.", show_info)
     create_button(button_frame, "Credits", show_credits)
 
-    img_path = "/home/sebpost02/Documents/NASA2024/NASA2024/logo.jpg"
+    img_path = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/logo.jpg"
     img = Image.open(img_path)
     img = img.resize((200, 200), Image.LANCZOS)
     img = round_image_corners(img, radius=30)
