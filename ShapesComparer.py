@@ -5,7 +5,7 @@ import numpy as np
 def draw_silhouette(frame):
     # Definir los puntos de la silueta (aquí un triángulo como ejemplo)
     #pts = np.array([[100, 300], [250, 100], [400, 300]], np.int32)
-    pts =  np.loadtxt("sil02.txt",dtype=int)
+    pts =  np.loadtxt("shapeCoords/sil01.txt",dtype=int)
     pts = pts.reshape((-1, 1, 2))
 
     # Dibujar la silueta (en blanco) sobre el frame (en este caso es rojo)
