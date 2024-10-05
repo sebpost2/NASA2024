@@ -4,8 +4,8 @@ import ttkbootstrap as ttk
 from PIL import Image, ImageTk, ImageDraw
 import cv2
 import mediapipe as mp
-import torch
-import os
+import numpy as np
+import time
 
 # Función para redondear las esquinas de una imagen
 def round_image_corners(image, radius):
@@ -17,32 +17,45 @@ def round_image_corners(image, radius):
     return rounded_image
 
 # Función para mostrar los créditos del proyecto
-# Función para mostrar los créditos del proyecto
 def show_credits():
-    # Crear una nueva ventana para los créditos
     credits_window = tk.Toplevel(root)
     credits_window.title("Créditos")
     credits_window.geometry("400x300")
     credits_window.configure(bg="#000033")
     
-    # Crear un marco con bordes redondeados y fondo agradable
     frame = ttk.Frame(credits_window, padding=20, bootstyle="primary", relief="solid", borderwidth=3)
     frame.place(relx=0.5, rely=0.5, anchor="center")
 
-    # Nombres en lista
     developers = ["Fabian Concha", "Justo Peres", "Abimael Guzman", "Giulia Nava", "Sebastian Postigo", "Gabriel Valdivia"]
     for dev in developers:
         dev_label = ttk.Label(frame, text=dev, font=("Helvetica", 12), foreground="white")
         dev_label.pack(anchor="w", padx=10, pady=2)
 
-    # Botón de cerrar ventana
     close_button = ttk.Button(frame, text="Cerrar", command=credits_window.destroy, bootstyle="danger")
     close_button.pack(pady=(20, 0))
-
 
 # Función para mostrar información extra sobre el proyecto
 def show_info():
     messagebox.showinfo("Información del Proyecto", "Este proyecto utiliza OpenCV para capturar video y estimar poses corporales.")
+
+# Función para dibujar la silueta cargada
+def draw_silhouette(frame):
+    pts = np.loadtxt("shapeCoords/sil01.txt", dtype=int)
+    pts = pts.reshape((-1, 1, 2))
+    cv2.polylines(frame, [pts], isClosed=True, color=(0, 0, 255), thickness=5)  # Dibuja en rojo
+    mask = np.zeros(frame.shape[:2], dtype=np.uint8)  # Máscara en escala de grises
+    cv2.fillPoly(mask, [pts], 255)
+    return pts, mask
+
+# Función para calcular el porcentaje de puntos dentro de la silueta
+def calculate_points_inside_shape(pts_silhouette, points):
+    inside_count = 0
+    for point in points:
+        # Utilizamos pointPolygonTest para comprobar si el punto está dentro (resultado > 0)
+        result = cv2.pointPolygonTest(pts_silhouette, (point[0], point[1]), False)
+        if result >= 0:
+            inside_count += 1
+    return inside_count
 
 # Función que inicia el código de tracking al hacer clic en Start
 def iniciar_deteccion():
@@ -62,35 +75,57 @@ def iniciar_deteccion():
                       min_detection_confidence=0.5,
                       min_tracking_confidence=0.5) as pose:
 
+        # Variable para controlar el tiempo de actualización
+        last_update_time = time.time()
+
         while cap.isOpened():
+            # Leer el frame de la cámara
             ret, frame = cap.read()
+
             if not ret:
+                print("Error al acceder a la cámara.")
                 break
 
             # Convertir la imagen de BGR a RGB
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image.flags.writeable = False  # Marca la imagen como no editable
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image_rgb.flags.writeable = False  # Marca la imagen como no editable
 
             # Realizar la detección de la pose
-            results = pose.process(image)
+            results = pose.process(image_rgb)
 
             # Marcar la imagen como editable nuevamente
-            image.flags.writeable = True
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            image_rgb.flags.writeable = True
+            image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
 
-            # Dibujar las anotaciones de la pose en la imagen
+            # Dibujar la silueta en el frame
+            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr)
+
+            # Generar puntos a partir de los landmarks de la pose
+            points = []
             if results.pose_landmarks:
                 for landmark in results.pose_landmarks.landmark:
-                    h, w, _ = image.shape
+                    h, w, _ = image_bgr.shape
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
-                    cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
+                    points.append((cx, cy))  # Guardar las coordenadas de los landmarks
 
-                mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            # Comprobar cuántos puntos están dentro de la silueta
+            inside_count = calculate_points_inside_shape(pts_silhouette, points)
+            
+            # Calcular el porcentaje de puntos que están dentro
+            total_points = len(points)
+            if total_points > 0:
+                match_percentage = (inside_count / total_points) * 100
+                cv2.putText(image_bgr, f"Coincidencia: {match_percentage:.2f}%", (10, 30), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            # Mostrar el video en tiempo real
-            cv2.imshow('Pose Estimation', image)
+            # Dibujar los puntos en el frame (para visualización)
+            for point in points:
+                cv2.circle(image_bgr, point, 5, (255, 255, 0), -1)  # Dibuja los puntos en color azul
 
-            if cv2.waitKey(5) & 0xFF == 27:  # Presiona 'Esc' para salir
+            cv2.imshow("Hole in the Wall", image_bgr)
+
+            # Presiona 'q' para salir
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
     # Liberar la captura y cerrar ventanas
