@@ -1,19 +1,15 @@
 import cv2
 import numpy as np
+import random
+import time
 
-# Definir función para dibujar la silueta sobre el feed en tiempo real
+# Dibujar silueta cargada
 def draw_silhouette(frame):
-    # Cargar los puntos de la silueta desde un archivo txt
-    pts = np.loadtxt("sil01.txt", dtype=int)
+    pts = np.loadtxt("shapeCoords/sil01.txt", dtype=int)
     pts = pts.reshape((-1, 1, 2))
-
-    # Dibujar la silueta (en rojo) sobre el frame
-    cv2.polylines(frame, [pts], isClosed=True, color=(0, 0, 255), thickness=5)
-    
-    # Crear una máscara en escala de grises para la silueta
-    mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+    cv2.polylines(frame, [pts], isClosed=True, color=(0, 0, 255), thickness=5) #DIbuja en rojo
+    mask = np.zeros(frame.shape[:2], dtype=np.uint8) #máscara en escala de grises
     cv2.fillPoly(mask, [pts], 255)
-    
     return pts, mask
 
 # Función para calcular el porcentaje de puntos dentro de la silueta
@@ -26,12 +22,22 @@ def calculate_points_inside_shape(pts_silhouette, points):
             inside_count += 1
     return inside_count
 
+# Puntos aleatorios
+def generate_random_points(num_points, width, height):
+    return [(random.randint(0, width), random.randint(0, height)) for _ in range(num_points)]
+
 # Captura de la cámara en tiempo real
 cap = cv2.VideoCapture(0)
 
-# Lista de puntos de ejemplo (en un futuro estos puntos serán actualizados en tiempo real)
-# Los puntos pueden ser cualquier conjunto de coordenadas que quieras comprobar
-points = [(150, 200), (220, 250), (300, 400), (120, 100)]
+ret, frame = cap.read()
+if ret:
+    height, width = frame.shape[:2]
+
+# Inicializar los puntos (simulando que se actualizan en tiempo real)
+points = generate_random_points(10, width, height)  # 10 puntos al azar
+
+# Variable para controlar el tiempo de actualización
+last_update_time = time.time()
 
 while True:
     # Leer el frame de la cámara
@@ -58,8 +64,13 @@ while True:
     for point in points:
         cv2.circle(frame, point, 5, (255, 255, 0), -1)  # Dibuja los puntos en color azul
 
-    # Mostrar el feed de la cámara con la silueta y la coincidencia
     cv2.imshow("Hole in the Wall", frame)
+
+    # Actualizar los puntos cada segundo
+    current_time = time.time()
+    if current_time - last_update_time >= 1:
+        points = generate_random_points(10, width, height)  # 10 nuevos puntos aleatorios
+        last_update_time = current_time
 
     # Presiona 'q' para salir
     if cv2.waitKey(1) & 0xFF == ord('q'):
