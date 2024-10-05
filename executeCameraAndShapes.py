@@ -5,7 +5,7 @@ import numpy as np
 def draw_silhouette(frame):
     # Definir los puntos de la silueta (aquí un triángulo como ejemplo)
     #pts = np.array([[100, 300], [250, 100], [400, 300]], np.int32)
-    pts =  np.loadtxt("sil01.txt",dtype=int)
+    pts =  np.loadtxt("sil02.txt",dtype=int)
     pts = pts.reshape((-1, 1, 2))
 
     # Dibujar la silueta (en blanco) sobre el frame (en este caso es rojo)
@@ -30,6 +30,9 @@ while True:
 
     # Dibujar la silueta en el frame
     silhouette_mask = draw_silhouette(frame)
+    
+    #Dibujar la silueta del player
+    
 
     # Convertir frame a escala de grises y umbralizar (para detectar cuerpos)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -49,6 +52,8 @@ while True:
 
     # Mostrar el feed de la cámara con la silueta y la coincidencia
     cv2.imshow("Hole in the Wall", frame)
+
+    cv2.imshow("Hole in the Wall", player_mask)
 
     # Presiona 'q' para salir
     if cv2.waitKey(1) & 0xFF == ord('q'):
