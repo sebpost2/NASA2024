@@ -6,7 +6,6 @@ import cv2
 import mediapipe as mp
 import torch
 
-# Función para redondear las esquinas de una imagen
 # Function to round image corners
 def round_image_corners(image, radius):
     mask = Image.new('L', image.size, 0)
@@ -16,11 +15,9 @@ def round_image_corners(image, radius):
     rounded_image.paste(image, (0, 0), mask)
     return rounded_image
 
-# Función para mostrar los créditos del proyecto
+# Function to show project credits
 def show_credits():
-    # Crear una nueva ventana para los créditos
     credits_window = tk.Toplevel(root)
-    credits_window.title("Créditos")
     credits_window.title("Credits")
     credits_window.geometry("400x300")
     credits_window.configure(bg="#060606")
