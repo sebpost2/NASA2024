@@ -40,7 +40,7 @@ def open_pose_estimation_window():
 # Función para crear botones con estilo similar a la imagen
 def create_button(parent, text, command):
     style = ttk.Style()
-    style.configure('my.TButton', font=("Courier New", 14), foreground="white", background="#000033", borderwidth=0)  # Cambiar color de fondo aquí
+    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)  # Cambiar color de fondo aquí
     button = ttk.Button(parent, text=text, command=command, style='my.TButton', width=15)
     button.pack(pady=5)
     return button
@@ -52,7 +52,7 @@ def show_main_menu():
         widget.destroy()
 
     # Cargar la imagen de fondo
-    bg_image = Image.open("C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/bckgrnd.jpg")  # Cambia la ruta aquí
+    bg_image = Image.open("C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/bckgrnd.jpg")
     bg_image = bg_image.resize((1000, 700), Image.LANCZOS)  # Ajusta el tamaño de la imagen a la ventana
     bg_image_tk = ImageTk.PhotoImage(bg_image)
 
@@ -61,17 +61,17 @@ def show_main_menu():
     background_label.image = bg_image_tk  # Mantener una referencia a la imagen
     background_label.place(x=0, y=0, relwidth=1, relheight=1)  # Establecer la etiqueta para que cubra toda la ventana
 
-    # Títulos del menú principal
-    title_label = ttk.Label(root, text="Galactic Games", font=("Courier New", 50), foreground="#663399", background="#000033")
+    # Títulos del menú principal sin fondo
+    title_label = ttk.Label(root, text="Galactic Games", font=("Sixtyfour Convergence", 35), foreground="#663399", background="")
     title_label.pack()
 
-    title_label2 = ttk.Label(root, text="Fun in a Microgravity", font=("Courier New", 40), foreground="#663399", background="#000033")
+    title_label2 = ttk.Label(root, text="Fun in a Microgravity", font=("Sixtyfour Convergence", 40), foreground="#663399", background="")
     title_label2.pack()
 
-    title_label3 = ttk.Label(root, text="Environment!", font=("Courier New", 40), foreground="#663399", background="#000033")
+    title_label3 = ttk.Label(root, text="Environment!", font=("Sixtyfour Convergence", 40), foreground="#663399", background="")
     title_label3.pack()
 
-    # Marco para los botones con fondo igual al fondo de la ventana
+    # Marco para los botones
     button_frame = ttk.Frame(root)  # No especificamos un estilo
     button_frame.pack(pady=20)
 
@@ -98,7 +98,7 @@ def show_main_menu():
 # Crear la interfaz gráfica
 def create_gui():
     global root
-    root = ttk.Window(themename="darkly")  # Ventana con estilo oscuro
+    root = ttk.Window(themename="superhero")  # Ventana con estilo oscuro
     root.title("Galactic Games: Fun in a Microgravity Environment!")
     root.geometry("1000x700")  # Tamaño de la ventana
 
