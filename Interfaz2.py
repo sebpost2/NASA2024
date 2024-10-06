@@ -11,7 +11,7 @@ from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPain
 # Rutas de la fuente, imágenes
 FONT_PATH = "static/SixtyfourConvergence-Regular.ttf"
 LOGO_PATH = "Images/logo.jpg"
-TEAM_LOGO_PATH = "Images/team.png"
+TEAM_LOGO_PATH = "Images/team.jpg"
 BACKGROUND_PATH = "Images/bckgrnd.jpg"
 PDF_PATH = "Images/info.pdf"
 AUDIO_PATH = "Images/menuSong.mp3"
@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
         team_label = QLabel(self)
         team_pixmap = QPixmap(TEAM_LOGO_PATH)
         rounded_team_pixmap = round_pixmap(team_pixmap, 60)
-        team_label.setPixmap(rounded_team_pixmap.scaled(130, 130, Qt.KeepAspectRatio))
+        team_label.setPixmap(rounded_team_pixmap.scaled(150, 130, Qt.KeepAspectRatio))
         image_layout.addWidget(team_label, alignment=Qt.AlignCenter)
         layout.addLayout(image_layout)
 
