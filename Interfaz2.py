@@ -188,7 +188,7 @@ class MainWindow(QMainWindow):
 
         # Crear una lista para contener los botones
         self.buttons = []
-        for button_text in ["Start", "Credits", "More Info"]:
+        for button_text in ["Start", "Credits", "More Info", "Exit"]:  # Añadir "Exit" a la lista
             button = QPushButton(button_text, self)
             button.setFont(custom_font)
             button.clicked.connect(self.on_button_click)
@@ -202,52 +202,49 @@ class MainWindow(QMainWindow):
         rounded_logo_pixmap = round_pixmap(logo_pixmap, 60)
         logo_label.setPixmap(rounded_logo_pixmap.scaled(130, 130, Qt.KeepAspectRatio))
         image_layout.addWidget(logo_label, alignment=Qt.AlignCenter)
+
         team_label = QLabel(self)
         team_pixmap = QPixmap(TEAM_LOGO_PATH)
         rounded_team_pixmap = round_pixmap(team_pixmap, 60)
-        team_label.setPixmap(rounded_team_pixmap.scaled(150, 130, Qt.KeepAspectRatio))
+        team_label.setPixmap(rounded_team_pixmap.scaled(130, 130, Qt.KeepAspectRatio))
         image_layout.addWidget(team_label, alignment=Qt.AlignCenter)
+
         layout.addLayout(image_layout)
 
     def create_blinking_effect(self, button):
-        # Crear un efecto de opacidad para el texto del botón
         opacity_effect = QGraphicsOpacityEffect()
         button.setGraphicsEffect(opacity_effect)
+        button_blink_timer = QTimer(self)
+        button_blink_timer.timeout.connect(lambda: self.blink_button(opacity_effect))
+        button_blink_timer.start(500)
 
-        # Crear un temporizador para el parpadeo
-        blink_timer = QTimer(self)
-        blink_timer.timeout.connect(lambda: self.blink_button_text(opacity_effect))
-        blink_timer.start(500)  # Ajustar el intervalo de parpadeo aquí
-
-    def blink_button_text(self, opacity_effect):
-        current_opacity = opacity_effect.opacity()
+    def blink_button(self, effect):
+        current_opacity = effect.opacity()
         new_opacity = 1.0 if current_opacity == 0.0 else 0.0
-        opacity_effect.setOpacity(new_opacity)
+        effect.setOpacity(new_opacity)
 
     def blink_title(self):
         current_opacity = self.opacity_effect.opacity()
-        self.opacity_effect.setOpacity(1.0 if current_opacity == 0.0 else 0.0)
+        new_opacity = 1.0 if current_opacity == 0.0 else 0.0
+        self.opacity_effect.setOpacity(new_opacity)
 
     def on_button_click(self):
+        button = self.sender()
         self.button_sound.play()
-        clicked_button = self.sender()
-        if clicked_button == self.buttons[0]:  # Start button
-            show_instructions(self)  # <-- Pasar 'self' como argumento
-        elif clicked_button == self.buttons[1]:  # Credits button
+        if button.text() == "Start":
+            pygame.mixer.music.stop()  # Stop the background music
+            show_instructions(self)
+        elif button.text() == "Credits":
             show_credits()
-        elif clicked_button == self.buttons[2]:  # More Info button
+        elif button.text() == "More Info":
             show_info()
-
-    def closeEvent(self, event):
-        pygame.mixer.music.stop()  # Detener la música al cerrar la ventana
-        # Cerrar cualquier proceso secundario si es necesario
-        if subprocess._active is not None:  # Verificar si _active no es None
-            for proc in subprocess._active:
-                proc.terminate()
-        event.accept()
+        elif button.text() == "Exit":
+            pygame.mixer.music.stop()  # Stop the background music
+            self.close()  # Close the main window
 
 
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-sys.exit(app.exec())
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    main_window = MainWindow()
+    main_window.show()
+    sys.exit(app.exec())
