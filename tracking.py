@@ -87,8 +87,8 @@ class CameraWindow(QWidget):
         self.interface_opened = False
         self.required_landmarks = [0, 11, 12, 23, 24, 31, 32]
         self.body_detected = False
-        self.last_success_time = 0  # Para evitar puntajes dobles
-        self.success_time = 0  # Para contar tiempo de éxito
+        self.last_success_time = 0
+        self.success_time = 0
 
     def update_frame(self):
         ret, frame = self.cap.read()
@@ -112,41 +112,52 @@ class CameraWindow(QWidget):
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
                     points.append((cx, cy))
 
-                pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, match_percentage=0)
+                # Calcular coincidencia
+                pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, 0)
                 inside_count = calculate_points_inside_shape(pts_silhouette, points)
                 total_points = len(points)
                 match_percentage = (inside_count / total_points) * 100 if total_points > 0 else 0
 
-                pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, match_percentage)
+                # Cambiar color de la figura según el porcentaje de coincidencia
+                if match_percentage < 50:
+                    silhouette_color = (0, 0, 255)  # Rojo
+                elif match_percentage >= 75:
+                    silhouette_color = (0, 255, 0)  # Verde
+                else:
+                    silhouette_color = (255, 0, 0)  # Azul
+
+                # Dibujar la silueta con el color específico
+                pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, match_percentage, silhouette_color)
 
                 current_time = time.time()
 
                 if match_percentage >= 75:
-                    self.success_time += self.timer.interval() / 1000  # Contar el tiempo de coincidencia
+                    self.success_time += self.timer.interval() / 1000
                     cv2.putText(frame, "SUCCESS", (frame.shape[1] // 2 - 100, frame.shape[0] // 2),
                                 cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
-                    self.success_label.setText(f"<font color='blue'>Success en {0.75 - self.success_time:.2f} segundos</font>")  # Mostrar el mensaje
+                    self.success_label.setText(f"<font color='blue'>Success en {0.75 - self.success_time:.2f} segundos</font>")
                 else:
-                    self.success_time = 0  # Reiniciar si no se mantiene la coincidencia
-                    self.success_label.clear()  # Limpiar el mensaje si no hay éxito
+                    self.success_time = 0
+                    self.success_label.clear()
 
-                if self.success_time >= 0.75:  # Solo contar puntaje si se mantiene por 0.75 segundos
-                    if self.last_success_time == 0 or (current_time - self.last_success_time >= 0.75):  # Evitar puntaje doble
+                if self.success_time >= 0.75:
+                    if self.last_success_time == 0 or (current_time - self.last_success_time >= 0.75):
                         self.score += 1
-                        self.last_success_time = current_time  # Registrar el tiempo del éxito
+                        self.last_success_time = current_time
                         self.shape_file = random.choice(self.shape_files)
                         self.start_time = time.time()
-                        self.success_time = 0  # Reiniciar contador de éxito
+                        self.success_time = 0
 
-                # Actualizar etiquetas
+                # Actualizar etiquetas con colores según el porcentaje de coincidencia
+                if match_percentage < 50:
+                    self.match_label.setText(f"<font color='red'>Coincidencia: {match_percentage:.2f}%</font>")
+                elif match_percentage >= 75:
+                    self.match_label.setText(f"<font color='green'>Coincidencia: {match_percentage:.2f}%</font>")
+                else:
+                    self.match_label.setText(f"<font color='blue'>Coincidencia: {match_percentage:.2f}%</font>")
+
                 self.score_label.setText(f"<font color='green'>Puntaje: {self.score}</font>")
-                self.match_label.setText(f"<font color='yellow'>Coincidencia: {match_percentage:.2f}%</font>")
                 self.fail_label.setText(f"<font color='red'>Fallos: {self.fails}</font>")
-
-                # Aplicar el formato de la etiqueta
-                self.score_label.setOpenExternalLinks(True)
-                self.match_label.setOpenExternalLinks(True)
-                self.fail_label.setOpenExternalLinks(True)
 
                 elapsed_time = time.time() - self.start_time
                 countdown = max(0, 10 - int(elapsed_time))
