@@ -7,10 +7,10 @@ from PySide6.QtCore import Qt, QThread, Signal, QRect
 from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
 
 # Rutas de la fuente y las imágenes
-FONT_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/Sixtyfour_Convergence/static/SixtyfourConvergence-Regular.ttf"
-LOGO_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/logo.jpg"
-TEAM_LOGO_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/team.png"  # Nueva ruta
-BACKGROUND_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/bckgrnd.jpg"
+FONT_PATH = "Sixtyfour_Convergence/static/SixtyfourConvergence-Regular.ttf"
+LOGO_PATH = "Images/logo.jpg"
+TEAM_LOGO_PATH = "Images/team.png"  # Nueva ruta
+BACKGROUND_PATH = "Images/bckgrnd.jpg"
 
 # Función para redondear las esquinas de un pixmap
 def round_pixmap(pixmap, radius):
@@ -36,7 +36,7 @@ def start_detection():
     window.hide()
     
     # Ejecutar el archivo Tracking2.py
-    subprocess.Popen([sys.executable, "Tracking.py"])
+    subprocess.Popen([sys.executable, "backups\Tracking2.py"])
     
     # Mostrar la ventana principal nuevamente al terminar el hilo
     window.show()
