@@ -3,6 +3,7 @@ import subprocess
 import cv2
 import fitz 
 import mediapipe as mp
+import pygame  # Import pygame for audio playback
 from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QSizePolicy, QSpacerItem, QGraphicsOpacityEffect, QScrollArea
 from PySide6.QtCore import Qt, QTimer, QRect
 from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
@@ -13,6 +14,8 @@ LOGO_PATH = "Images/logo.jpg"
 TEAM_LOGO_PATH = "Images/team.png"
 BACKGROUND_PATH = "Images/bckgrnd.jpg"
 PDF_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/Images/info.pdf"
+AUDIO_PATH = "Images/menuSong.mp3"
+BUTTON_SOUND_PATH = "Images/button-pressed-38129.mp3"
 
 class PDFViewer(QDialog):
     def __init__(self, pdf_path):
@@ -143,13 +146,20 @@ def show_info():
     pdf_viewer.exec()
   
 
-
 # Clase principal para la interfaz
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.setWindowTitle("Galactic Games")
+        self.setWindowTitle("ASTRO·SHAPE")
         self.setGeometry(100, 100, 800, 600)
+
+        # Reproductor de música
+        pygame.mixer.init()
+        pygame.mixer.music.load(AUDIO_PATH)
+        pygame.mixer.music.play(-1)
+
+        # Cargar el sonido del botón
+        self.button_sound = pygame.mixer.Sound(BUTTON_SOUND_PATH)
 
         # Establecer la fuente personalizada
         font_id = QFontDatabase.addApplicationFont(FONT_PATH)
@@ -264,6 +274,7 @@ class MainWindow(QMainWindow):
 
     # Función que se ejecuta al hacer clic en cualquier botón
     def on_button_click(self):
+        self.button_sound.play()
         clicked_button = self.sender()
         if clicked_button == self.start_button:
             start_detection()
