@@ -1,12 +1,8 @@
 import cv2
 import mediapipe as mp
-import tkinter as tk
 
 # Función que inicia la detección de pose
 def iniciar_deteccion():
-    # Cerrar ventana del menú antes de iniciar la detección
-    root.destroy()
-
     # Inicializar MediaPipe para la detección de poses
     mp_drawing = mp.solutions.drawing_utils
     mp_pose = mp.solutions.pose
@@ -56,14 +52,6 @@ def iniciar_deteccion():
     cap.release()
     cv2.destroyAllWindows()
 
-# Crear la ventana del menú con tkinter
-root = tk.Tk()
-root.title("Menú de Inicio")
-root.geometry("300x150")
-
-# Crear el botón Start
-start_button = tk.Button(root, text="Start", command=iniciar_deteccion, font=("Arial", 16), bg="green", fg="white")
-start_button.pack(pady=50)
-
-# Ejecutar el menú de tkinter
-root.mainloop()
+# Ejecutar directamente la función de detección
+if __name__ == "__main__":
+    iniciar_deteccion()
