@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 # Cargar la imagen que contiene la silueta (blanco sobre fondo negro)
-img = cv2.imread('shapes/silueta01_test.png', cv2.IMREAD_GRAYSCALE)
+img = cv2.imread('shapes/silueta04.png', cv2.IMREAD_GRAYSCALE)
 
 # Umbralizar la imagen para obtener la silueta en blanco
 ret, thresh = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY_INV)
@@ -50,7 +50,7 @@ approx = cv2.approxPolyDP(contours[chosenContour], epsilon, True)
 # Imprimir los puntos reducidos
 print(approx.reshape(-1, 2))
 
-with open('shapeCoords/sil01.txt','w') as f:
+with open('shapeCoords/sil04.txt','w') as f:
     for point in approx.reshape(-1, 2):
         f.write(f"{point[0]} {point[1]}\n")
 

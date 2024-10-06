@@ -5,7 +5,7 @@ import time
 
 # Dibujar silueta cargada
 def draw_silhouette(frame):
-    pts = np.loadtxt("shapeCoords/sil01.txt", dtype=int)
+    pts = np.loadtxt("shapeCoords/sil04.txt", dtype=int)
     pts = pts.reshape((-1, 1, 2))
     cv2.polylines(frame, [pts], isClosed=True, color=(0, 0, 255), thickness=5) #DIbuja en rojo
     mask = np.zeros(frame.shape[:2], dtype=np.uint8) #máscara en escala de grises
