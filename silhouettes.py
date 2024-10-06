@@ -1,8 +1,8 @@
+# silhouettes.py
 import numpy as np
 import cv2
 
-def draw_silhouette(frame, shape_file, match_percentage):
-    color = (0, 255, 0) if match_percentage >= 50 else (0, 0, 255)
+def draw_silhouette(frame, shape_file, match_percentage, color=(0, 0, 255)):
     pts = np.loadtxt(shape_file, dtype=int)
     pts = pts.reshape((-1, 1, 2))
     cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=5)
