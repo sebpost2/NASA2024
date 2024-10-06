@@ -56,9 +56,12 @@ class CameraWindow(QWidget):
         self.start_time = time.time()
         self.score = 0
         self.score_incremented = False
-        self.freeze_time = 2000  # tiempo de pausa en milisegundos
+        self.freeze_time = 2000  
         self.timer.start(30)
         self.interface_opened = False
+
+        self.required_landmarks = [0, 11, 12, 23, 24,31,32]  
+        self.body_detected = False
 
     def update_frame(self):
         ret, frame = self.cap.read()
@@ -66,67 +69,74 @@ class CameraWindow(QWidget):
             print("Error al acceder a la cámara.")
             return
 
-        frame = cv2.flip(frame, 1)  # Reflejar la imagen para que sea más intuitiva
+        frame = cv2.flip(frame, 1)  
         results = self.pose.process(frame)
 
         if results.pose_landmarks:
-            mp.solutions.drawing_utils.draw_landmarks(frame, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS)
+            landmarks = results.pose_landmarks.landmark
+            self.body_detected = all(landmarks[i].visibility > 0.5 for i in self.required_landmarks)
 
-        points = []
-        if results.pose_landmarks:
-            for landmark in results.pose_landmarks.landmark:
-                h, w, _ = frame.shape
-                cx, cy = int(landmark.x * w), int(landmark.y * h)
-                points.append((cx, cy))
+            if self.body_detected:
+                mp.solutions.drawing_utils.draw_landmarks(frame, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS)
 
-        pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, match_percentage=0)
-        inside_count = calculate_points_inside_shape(pts_silhouette, points)
-        total_points = len(points)
-        match_percentage = (inside_count / total_points) * 100 if total_points > 0 else 0
+                points = []
+                for landmark in landmarks:
+                    h, w, _ = frame.shape
+                    cx, cy = int(landmark.x * w), int(landmark.y * h)
+                    points.append((cx, cy))
 
-        pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, match_percentage)
+                pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, match_percentage=0)
+                inside_count = calculate_points_inside_shape(pts_silhouette, points)
+                total_points = len(points)
+                match_percentage = (inside_count / total_points) * 100 if total_points > 0 else 0
 
-        if match_percentage >= 50 and not self.score_incremented:
-            cv2.putText(frame, "SUCCESS", (frame.shape[1] // 2 - 100, frame.shape[0] // 2),
-                        cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)  # Cambiamos a verde
-            self.display_image(frame)
+                pts_silhouette, silhouette_mask = draw_silhouette(frame, self.shape_file, match_percentage)
 
-            self.score += 1
-            self.score_incremented = True
-            self.shape_file = random.choice(self.shape_files)
-            self.start_time = time.time()
+                if match_percentage >= 75 and not self.score_incremented:
+                    cv2.putText(frame, "SUCCESS", (frame.shape[1] // 2 - 100, frame.shape[0] // 2),
+                                cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)  # Cambiamos a verde
+                    self.display_image(frame)
 
-            # Pausar por 2 segundos antes de continuar
-            QTimer.singleShot(self.freeze_time, self.timer.start)  # reanuda el timer después de 2s
-            self.timer.stop()
-            return
+                    self.score += 1
+                    self.score_incremented = True
+                    self.shape_file = random.choice(self.shape_files)
+                    self.start_time = time.time()
 
-        if match_percentage < 50:
-            self.score_incremented = False
+                    
+                    QTimer.singleShot(self.freeze_time, self.timer.start)  
+                    self.timer.stop()
+                    return
 
-        cv2.putText(frame, f"Puntaje: {self.score}", (10, frame.shape[0] - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        cv2.putText(frame, f"Coincidencia: {match_percentage:.2f}%", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                if match_percentage < 50:
+                    self.score_incremented = False
 
-        elapsed_time = time.time() - self.start_time
-        countdown = max(0, 10 - int(elapsed_time))
+                cv2.putText(frame, f"Puntaje: {self.score}", (10, frame.shape[0] - 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                cv2.putText(frame, f"Coincidencia: {match_percentage:.2f}%", (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        timer_text = f"{countdown}s"
-        text_size = cv2.getTextSize(timer_text, cv2.FONT_HERSHEY_SIMPLEX, 2.5, 5)[0]
-        text_x = (frame.shape[1] - text_size[0]) // 2
-        cv2.putText(frame, timer_text, (text_x, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 2.5, (0, 0, 255), 5)
+                elapsed_time = time.time() - self.start_time
+                countdown = max(0, 10 - int(elapsed_time))
 
-        if countdown == 0:
-            self.shape_file = random.choice(self.shape_files)
-            self.start_time = time.time()
+                timer_text = f"{countdown}s"
+                text_size = cv2.getTextSize(timer_text, cv2.FONT_HERSHEY_SIMPLEX, 2.5, 5)[0]
+                text_x = (frame.shape[1] - text_size[0]) // 2
+                cv2.putText(frame, timer_text, (text_x, 60),
+                            cv2.FONT_HERSHEY_SIMPLEX, 2.5, (0, 0, 255), 5)
 
-        # Mostrar el frame en el QLabel
+                if countdown == 0:
+                    self.shape_file = random.choice(self.shape_files)
+                    self.start_time = time.time()
+            else:
+            
+                cv2.putText(frame, "Detectando cuerpo completo...", (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        
         self.display_image(frame)
 
     def display_image(self, frame):
-        # Convierte el frame en formato QImage para QLabel
+        
         image = QImage(frame.data, frame.shape[1], frame.shape[0], QImage.Format_BGR888)
         self.camera_label.setPixmap(QPixmap.fromImage(image))
 
@@ -135,7 +145,7 @@ class CameraWindow(QWidget):
         self.timer.stop()
         if not self.interface_opened:
             subprocess.Popen([sys.executable, "Interfaz2.py"])
-            self.interface_opened = True  # Cambia el estado a True
+            self.interface_opened = True  
         self.close()
 
     def closeEvent(self, event):
@@ -147,3 +157,4 @@ app = QApplication(sys.argv)
 window = CameraWindow()
 window.show()
 sys.exit(app.exec())
+
