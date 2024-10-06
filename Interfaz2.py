@@ -1,13 +1,14 @@
 import sys
 import cv2
 import mediapipe as mp
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog
-from PySide6.QtCore import Qt, QThread, Signal, QRect  # Agregar QRect aquí
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QSizePolicy, QSpacerItem
+from PySide6.QtCore import Qt, QThread, Signal, QRect
 from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
 
-# Rutas de la fuente y la imagen
+# Rutas de la fuente y las imágenes
 FONT_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/Sixtyfour_Convergence/static/SixtyfourConvergence-Regular.ttf"
 LOGO_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/logo.jpg"
+TEAM_LOGO_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/team.png"  # Nueva ruta
 BACKGROUND_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/bckgrnd.jpg"
 
 # Función para redondear las esquinas de un pixmap
@@ -89,7 +90,7 @@ def show_credits():
     
     layout = QVBoxLayout()
     
-    credits = ["Fabian Concha", "Justo Perez", "Abimael Ruiz", "Sebastian Postigo", "Gabriel Valdivia"]
+    credits = ["CREDITS:", "Fabian Concha", "Giulia Naval", "Justo Perez", "Abimael Ruiz", "Sebastian Postigo", "Gabriel Valdivia"]
     for credit in credits:
         label = QLabel(credit)
         label.setFont(QFont("Arial", 12))
@@ -174,6 +175,9 @@ class MainWindow(QMainWindow):
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
 
+        # Espaciador vertical para separar las imágenes del borde superior
+        layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
         # Botón "Start"
         start_button = QPushButton("Start", self)
         start_button.setFont(QFont(family[0], 14))
@@ -195,12 +199,30 @@ class MainWindow(QMainWindow):
         info_button.clicked.connect(show_info)
         layout.addWidget(info_button, alignment=Qt.AlignCenter)
 
-        # Añadir la imagen debajo de los botones
+        # Espaciador vertical para separar las imágenes del borde superior
+        layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
+        # Crear un layout horizontal para las imágenes
+        image_layout = QHBoxLayout()
+        
+        # Imagen del logo
         logo_label = QLabel(self)
         logo_pixmap = QPixmap(LOGO_PATH)
-        rounded_logo_pixmap = round_pixmap(logo_pixmap, 40)
-        logo_label.setPixmap(rounded_logo_pixmap.scaled(200, 200, Qt.KeepAspectRatio))
-        layout.addWidget(logo_label, alignment=Qt.AlignCenter)
+        rounded_logo_pixmap = round_pixmap(logo_pixmap, 60)
+        logo_label.setPixmap(rounded_logo_pixmap.scaled(130, 130, Qt.KeepAspectRatio))
+        image_layout.addWidget(logo_label, alignment=Qt.AlignCenter)
+
+        # Imagen del equipo
+        team_label = QLabel(self)
+        team_pixmap = QPixmap(TEAM_LOGO_PATH)
+        rounded_team_pixmap = round_pixmap(team_pixmap, 60)
+        team_label.setPixmap(rounded_team_pixmap.scaled(130, 130, Qt.KeepAspectRatio))  # Ajustar tamaño según sea necesario
+        image_layout.addWidget(team_label, alignment=Qt.AlignCenter)
+
+        layout.addLayout(image_layout)
+
+        # Espaciador vertical para separar las imágenes del borde superior
+        layout.addSpacerItem(QSpacerItem(20, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
 # Iniciar la aplicación
 app = QApplication(sys.argv)
