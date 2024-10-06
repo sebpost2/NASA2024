@@ -4,7 +4,8 @@ import ttkbootstrap as ttk
 from PIL import Image, ImageTk, ImageDraw
 import cv2
 import mediapipe as mp
-import torch
+import numpy as np
+import time
 
 # Function to round image corners
 def round_image_corners(image, radius):
@@ -15,7 +16,8 @@ def round_image_corners(image, radius):
     rounded_image.paste(image, (0, 0), mask)
     return rounded_image
 
-# Function to show project credits
+# Función para mostrar los créditos del proyecto
+
 def show_credits():
     credits_window = tk.Toplevel(root)
     credits_window.title("Credits")
@@ -42,48 +44,101 @@ def show_credits():
 
 
 # Function to show extra project information
+
 def show_info():
     messagebox.showinfo("Project Information", "This project uses OpenCV to capture video and estimate body poses.")
 
-# Function to start detection on 'Start' button click
-def iniciar_deteccion():
-    root.destroy()
-    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
-    yolo_model.classes = [0]
+# Función para dibujar la silueta cargada
+def draw_silhouette(frame):
+    pts = np.loadtxt("shapeCoords/sil01.txt", dtype=int)
+    pts = pts.reshape((-1, 1, 2))
+    cv2.polylines(frame, [pts], isClosed=True, color=(0, 0, 255), thickness=5)  # Dibuja en rojo
+    mask = np.zeros(frame.shape[:2], dtype=np.uint8)  # Máscara en escala de grises
+    cv2.fillPoly(mask, [pts], 255)
+    return pts, mask
 
+# Función para calcular el porcentaje de puntos dentro de la silueta
+def calculate_points_inside_shape(pts_silhouette, points):
+    inside_count = 0
+    for point in points:
+        # Utilizamos pointPolygonTest para comprobar si el punto está dentro (resultado > 0)
+        result = cv2.pointPolygonTest(pts_silhouette, (point[0], point[1]), False)
+        if result >= 0:
+            inside_count += 1
+    return inside_count
+
+# Función que inicia el código de tracking al hacer clic en Start
+def iniciar_deteccion():
+    root.destroy()  # Cerrar el menú principal
+
+    # Inicializar MediaPipe para la detección de poses
     mp_drawing = mp.solutions.drawing_utils
     mp_pose = mp.solutions.pose
+
+    # Iniciar la captura de video desde la cámara web
     cap = cv2.VideoCapture(0)
 
-    with mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3) as pose:
+    # Configuración del modelo de pose
+    with mp_pose.Pose(static_image_mode=False, 
+                      model_complexity=2, 
+                      enable_segmentation=False,
+                      min_detection_confidence=0.5,
+                      min_tracking_confidence=0.5) as pose:
+
+        # Variable para controlar el tiempo de actualización
+        last_update_time = time.time()
+
         while cap.isOpened():
+            # Leer el frame de la cámara
             ret, frame = cap.read()
+
             if not ret:
+                print("Error al acceder a la cámara.")
                 break
 
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image.flags.writeable = False
-            result = yolo_model(image)
-            image.flags.writeable = True
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            MARGIN = 10
+            # Convertir la imagen de BGR a RGB
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image_rgb.flags.writeable = False  # Marca la imagen como no editable
 
-            for (xmin, ymin, xmax, ymax, confidence, clas) in result.xyxy[0].tolist():
-                crop_image = image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN]
-                crop_rgb = cv2.cvtColor(crop_image, cv2.COLOR_BGR2RGB)
-                results = pose.process(crop_rgb)
+            # Realizar la detección de la pose
+            results = pose.process(image_rgb)
 
-                if results.pose_landmarks:
-                    mp_drawing.draw_landmarks(crop_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-                                              mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                                              mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
+            # Marcar la imagen como editable nuevamente
+            image_rgb.flags.writeable = True
+            image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
 
-                image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN] = crop_image
+            # Dibujar la silueta en el frame
+            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr)
 
-            cv2.imshow('Real-Time Person and Pose Detection', image)
+            # Generar puntos a partir de los landmarks de la pose
+            points = []
+            if results.pose_landmarks:
+                for landmark in results.pose_landmarks.landmark:
+                    h, w, _ = image_bgr.shape
+                    cx, cy = int(landmark.x * w), int(landmark.y * h)
+                    points.append((cx, cy))  # Guardar las coordenadas de los landmarks
+
+            # Comprobar cuántos puntos están dentro de la silueta
+            inside_count = calculate_points_inside_shape(pts_silhouette, points)
+            
+            # Calcular el porcentaje de puntos que están dentro
+            total_points = len(points)
+            if total_points > 0:
+                match_percentage = (inside_count / total_points) * 100
+                cv2.putText(image_bgr, f"Coincidencia: {match_percentage:.2f}%", (10, 30), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+            # Dibujar los puntos en el frame (para visualización)
+            for point in points:
+                cv2.circle(image_bgr, point, 5, (255, 255, 0), -1)  # Dibuja los puntos en color azul
+
+            cv2.imshow("Hole in the Wall", image_bgr)
+
+            # Presiona 'q' para salir
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
+    # Liberar la captura y cerrar ventanas
     cap.release()
     cv2.destroyAllWindows()
 
