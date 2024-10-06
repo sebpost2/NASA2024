@@ -51,7 +51,7 @@ class CameraWindow(QWidget):
             min_tracking_confidence=0.5
         )
 
-        self.shape_files = ["shapeCoords/sil01.txt", "shapeCoords/sil02.txt", "shapeCoords/sil03.txt"]
+        self.shape_files = ["shapeCoords/sil03.txt","shapeCoords/Pose1.txt","shapeCoords/Pose2.txt","shapeCoords/Pose3.txt","shapeCoords/Pose4.txt","shapeCoords/Pose5.txt","shapeCoords/1.txt","shapeCoords/2.txt","shapeCoords/3.txt","shapeCoords/4.txt","shapeCoords/5.txt"]
         self.shape_file = random.choice(self.shape_files)
         self.start_time = time.time()
         self.score = 0
@@ -60,7 +60,7 @@ class CameraWindow(QWidget):
         self.timer.start(30)
         self.interface_opened = False
 
-        self.required_landmarks = [0, 11, 12, 23, 24,31,32]  
+        self.required_landmarks = [0, 11, 12, 23, 24,25,26]  
         self.body_detected = False
 
     def update_frame(self):
