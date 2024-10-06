@@ -4,16 +4,9 @@ import cv2
 import fitz
 import mediapipe as mp
 import pygame
-import logging
-import os
-import psutil  # Asegúrate de tener psutil instalado
 from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QSizePolicy, QSpacerItem, QGraphicsOpacityEffect, QScrollArea
 from PySide6.QtCore import Qt, QTimer, QRect
 from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
-
-# Silenciar mensajes de advertencia
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Para TensorFlow
-logging.getLogger('absl').setLevel(logging.ERROR)  # Para Mediapipe
 
 # Rutas de la fuente, imágenes
 FONT_PATH = "static/SixtyfourConvergence-Regular.ttf"
@@ -28,7 +21,7 @@ class InstructionsScreen(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Instructions")
-        self.setGeometry(100, 100, 1000, 600)
+        self.setGeometry(100, 100, 1000, 600)  # Asigna el mismo tamaño que la ventana principal
         layout = QVBoxLayout(self)
 
         # Texto de instrucciones
@@ -49,7 +42,7 @@ class InstructionsScreen(QDialog):
         instructions_label = QLabel(instructions_text, self)
         instructions_label.setFont(QFont("Arial", 20))
         instructions_label.setAlignment(Qt.AlignCenter)
-        instructions_label.setWordWrap(True)
+        instructions_label.setWordWrap(True)  # Permitir que el texto se ajuste a varias líneas
         layout.addWidget(instructions_label)
         
         # Agregar espaciador vertical
@@ -58,15 +51,17 @@ class InstructionsScreen(QDialog):
         # Crear botón para continuar
         continue_button = QPushButton("Continue to Pose Detection", self)
         continue_button.setFont(QFont("Arial", 18))
-        continue_button.clicked.connect(self.start_detection)
+        continue_button.clicked.connect(self.start_detection)  # Conectar el botón con la función que inicia tracking.py
         layout.addWidget(continue_button, alignment=Qt.AlignCenter)
 
     def start_detection(self):
         self.close()  # Cerrar la ventana de instrucciones
         subprocess.Popen([sys.executable, "tracking.py"])  # Ejecutar tracking.py
 
+
+# You would show this dialog before starting pose detection
 def show_instructions(parent):
-    parent.close()
+    parent.close()  # Cerrar la ventana del menú
     instructions_screen = InstructionsScreen(parent)
     instructions_screen.exec()
 
@@ -164,7 +159,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle("ASTRO·SHAPE")
-        self.setGeometry(100, 100, 1920, 1080)
+        self.setGeometry(100, 100, 1920, 1080)  # Cambiado a 1920x1080
         pygame.mixer.init()
         pygame.mixer.music.load(AUDIO_PATH)
         pygame.mixer.music.play(-1)
@@ -186,8 +181,6 @@ class MainWindow(QMainWindow):
         self.opacity_effect = QGraphicsOpacityEffect()
         self.title_label.setGraphicsEffect(self.opacity_effect)
         layout.addWidget(self.title_label)
-        
-        # Temporizador para parpadeo del título
         self.blink_timer = QTimer(self)
         self.blink_timer.timeout.connect(self.blink_title)
         self.blink_timer.start(500)
@@ -195,7 +188,7 @@ class MainWindow(QMainWindow):
 
         # Crear una lista para contener los botones
         self.buttons = []
-        for button_text in ["Start", "Credits", "More Info"]:
+        for button_text in ["Start", "Credits", "More Info", "Exit"]:  # Añadir "Exit" a la lista
             button = QPushButton(button_text, self)
             button.setFont(custom_font)
             button.clicked.connect(self.on_button_click)
@@ -215,58 +208,43 @@ class MainWindow(QMainWindow):
         rounded_team_pixmap = round_pixmap(team_pixmap, 60)
         team_label.setPixmap(rounded_team_pixmap.scaled(130, 130, Qt.KeepAspectRatio))
         image_layout.addWidget(team_label, alignment=Qt.AlignCenter)
+
         layout.addLayout(image_layout)
 
-        layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
-
     def create_blinking_effect(self, button):
-        effect = QGraphicsOpacityEffect()
-        button.setGraphicsEffect(effect)
-        timer = QTimer(self)
-        timer.timeout.connect(lambda: self.blink_button(button, effect))
-        timer.start(500)
+        opacity_effect = QGraphicsOpacityEffect()
+        button.setGraphicsEffect(opacity_effect)
+        button_blink_timer = QTimer(self)
+        button_blink_timer.timeout.connect(lambda: self.blink_button(opacity_effect))
+        button_blink_timer.start(500)
 
-    def blink_button(self, button, effect):
+    def blink_button(self, effect):
         current_opacity = effect.opacity()
-        new_opacity = 0.0 if current_opacity == 1.0 else 1.0
+        new_opacity = 1.0 if current_opacity == 0.0 else 0.0
         effect.setOpacity(new_opacity)
+
+    def blink_title(self):
+        current_opacity = self.opacity_effect.opacity()
+        new_opacity = 1.0 if current_opacity == 0.0 else 0.0
+        self.opacity_effect.setOpacity(new_opacity)
 
     def on_button_click(self):
         button = self.sender()
-        self.button_sound.play()  # Reproducir sonido al presionar
+        self.button_sound.play()
         if button.text() == "Start":
+            pygame.mixer.music.stop()  # Stop the background music
             show_instructions(self)
         elif button.text() == "Credits":
             show_credits()
         elif button.text() == "More Info":
             show_info()
+        elif button.text() == "Exit":
+            pygame.mixer.music.stop()  # Stop the background music
+            self.close()  # Close the main window
 
-    def blink_title(self):
-        current_opacity = self.opacity_effect.opacity()
-        new_opacity = 0.0 if current_opacity == 1.0 else 1.0
-        self.opacity_effect.setOpacity(new_opacity)
-
-    def closeEvent(self, event):
-        self.terminate_subprocesses()  # Llama a terminate_subprocesses al cerrar
-        pygame.mixer.music.stop()  # Detener la música
-        event.accept()  # Aceptar el evento de cierre
-
-    def terminate_subprocesses(self):
-        # Revisa todos los procesos activos y termina los que se iniciaron desde este script
-        for proc in psutil.process_iter(['pid', 'name']):
-            try:
-                if proc.name() == "python" and proc.pid != os.getpid():
-                    proc.terminate()  # Termina el proceso
-                    try:
-                        proc.wait(timeout=1)  # Espera a que el proceso termine
-                    except psutil.TimeoutExpired:
-                        proc.kill()  # Si no termina, forzar su cierre
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
+    main_window = MainWindow()
+    main_window.show()
     sys.exit(app.exec())
-    
