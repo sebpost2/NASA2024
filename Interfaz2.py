@@ -4,9 +4,16 @@ import cv2
 import fitz
 import mediapipe as mp
 import pygame
+import logging
+import os
+import psutil  # Asegúrate de tener psutil instalado
 from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QSizePolicy, QSpacerItem, QGraphicsOpacityEffect, QScrollArea
 from PySide6.QtCore import Qt, QTimer, QRect
 from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
+
+# Silenciar mensajes de advertencia
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Para TensorFlow
+logging.getLogger('absl').setLevel(logging.ERROR)  # Para Mediapipe
 
 # Rutas de la fuente, imágenes
 FONT_PATH = "static/SixtyfourConvergence-Regular.ttf"
@@ -21,7 +28,7 @@ class InstructionsScreen(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Instructions")
-        self.setGeometry(100, 100, 1000, 600)  # Asigna el mismo tamaño que la ventana principal
+        self.setGeometry(100, 100, 1000, 600)
         layout = QVBoxLayout(self)
 
         # Texto de instrucciones
@@ -42,7 +49,7 @@ class InstructionsScreen(QDialog):
         instructions_label = QLabel(instructions_text, self)
         instructions_label.setFont(QFont("Arial", 20))
         instructions_label.setAlignment(Qt.AlignCenter)
-        instructions_label.setWordWrap(True)  # Permitir que el texto se ajuste a varias líneas
+        instructions_label.setWordWrap(True)
         layout.addWidget(instructions_label)
         
         # Agregar espaciador vertical
@@ -51,17 +58,15 @@ class InstructionsScreen(QDialog):
         # Crear botón para continuar
         continue_button = QPushButton("Continue to Pose Detection", self)
         continue_button.setFont(QFont("Arial", 18))
-        continue_button.clicked.connect(self.start_detection)  # Conectar el botón con la función que inicia tracking.py
+        continue_button.clicked.connect(self.start_detection)
         layout.addWidget(continue_button, alignment=Qt.AlignCenter)
 
     def start_detection(self):
         self.close()  # Cerrar la ventana de instrucciones
         subprocess.Popen([sys.executable, "tracking.py"])  # Ejecutar tracking.py
 
-
-# You would show this dialog before starting pose detection
 def show_instructions(parent):
-    parent.close()  # Cerrar la ventana del menú
+    parent.close()
     instructions_screen = InstructionsScreen(parent)
     instructions_screen.exec()
 
@@ -159,7 +164,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle("ASTRO·SHAPE")
-        self.setGeometry(100, 100, 1920, 1080)  # Cambiado a 1920x1080
+        self.setGeometry(100, 100, 1920, 1080)
         pygame.mixer.init()
         pygame.mixer.music.load(AUDIO_PATH)
         pygame.mixer.music.play(-1)
@@ -181,6 +186,8 @@ class MainWindow(QMainWindow):
         self.opacity_effect = QGraphicsOpacityEffect()
         self.title_label.setGraphicsEffect(self.opacity_effect)
         layout.addWidget(self.title_label)
+        
+        # Temporizador para parpadeo del título
         self.blink_timer = QTimer(self)
         self.blink_timer.timeout.connect(self.blink_title)
         self.blink_timer.start(500)
@@ -202,52 +209,64 @@ class MainWindow(QMainWindow):
         rounded_logo_pixmap = round_pixmap(logo_pixmap, 60)
         logo_label.setPixmap(rounded_logo_pixmap.scaled(130, 130, Qt.KeepAspectRatio))
         image_layout.addWidget(logo_label, alignment=Qt.AlignCenter)
+
         team_label = QLabel(self)
         team_pixmap = QPixmap(TEAM_LOGO_PATH)
         rounded_team_pixmap = round_pixmap(team_pixmap, 60)
-        team_label.setPixmap(rounded_team_pixmap.scaled(150, 130, Qt.KeepAspectRatio))
+        team_label.setPixmap(rounded_team_pixmap.scaled(130, 130, Qt.KeepAspectRatio))
         image_layout.addWidget(team_label, alignment=Qt.AlignCenter)
         layout.addLayout(image_layout)
 
+        layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
     def create_blinking_effect(self, button):
-        # Crear un efecto de opacidad para el texto del botón
-        opacity_effect = QGraphicsOpacityEffect()
-        button.setGraphicsEffect(opacity_effect)
+        effect = QGraphicsOpacityEffect()
+        button.setGraphicsEffect(effect)
+        timer = QTimer(self)
+        timer.timeout.connect(lambda: self.blink_button(button, effect))
+        timer.start(500)
 
-        # Crear un temporizador para el parpadeo
-        blink_timer = QTimer(self)
-        blink_timer.timeout.connect(lambda: self.blink_button_text(opacity_effect))
-        blink_timer.start(500)  # Ajustar el intervalo de parpadeo aquí
+    def blink_button(self, button, effect):
+        current_opacity = effect.opacity()
+        new_opacity = 0.0 if current_opacity == 1.0 else 1.0
+        effect.setOpacity(new_opacity)
 
-    def blink_button_text(self, opacity_effect):
-        current_opacity = opacity_effect.opacity()
-        new_opacity = 1.0 if current_opacity == 0.0 else 0.0
-        opacity_effect.setOpacity(new_opacity)
+    def on_button_click(self):
+        button = self.sender()
+        self.button_sound.play()  # Reproducir sonido al presionar
+        if button.text() == "Start":
+            show_instructions(self)
+        elif button.text() == "Credits":
+            show_credits()
+        elif button.text() == "More Info":
+            show_info()
 
     def blink_title(self):
         current_opacity = self.opacity_effect.opacity()
-        self.opacity_effect.setOpacity(1.0 if current_opacity == 0.0 else 0.0)
-
-    def on_button_click(self):
-        self.button_sound.play()
-        clicked_button = self.sender()
-        if clicked_button == self.buttons[0]:  # Start button
-            show_instructions(self)  # <-- Pasar 'self' como argumento
-        elif clicked_button == self.buttons[1]:  # Credits button
-            show_credits()
-        elif clicked_button == self.buttons[2]:  # More Info button
-            show_info()
+        new_opacity = 0.0 if current_opacity == 1.0 else 1.0
+        self.opacity_effect.setOpacity(new_opacity)
 
     def closeEvent(self, event):
-        pygame.mixer.music.stop()  # Detener la música al cerrar la ventana
-        # Cerrar cualquier proceso secundario si es necesario
-        if subprocess._active is not None:  # Verificar si _active no es None
-            for proc in subprocess._active:
-                proc.terminate()
-        event.accept()
+        self.terminate_subprocesses()  # Llama a terminate_subprocesses al cerrar
+        pygame.mixer.music.stop()  # Detener la música
+        event.accept()  # Aceptar el evento de cierre
 
+    def terminate_subprocesses(self):
+        # Revisa todos los procesos activos y termina los que se iniciaron desde este script
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                if proc.name() == "python" and proc.pid != os.getpid():
+                    proc.terminate()  # Termina el proceso
+                    try:
+                        proc.wait(timeout=1)  # Espera a que el proceso termine
+                    except psutil.TimeoutExpired:
+                        proc.kill()  # Si no termina, forzar su cierre
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
 
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-sys.exit(app.exec())
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
+    
