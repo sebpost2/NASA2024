@@ -6,6 +6,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
+import random
 
 # Function to round image corners
 def round_image_corners(image, radius):
@@ -17,43 +18,36 @@ def round_image_corners(image, radius):
     return rounded_image
 
 # Función para mostrar los créditos del proyecto
-
 def show_credits():
     credits_window = tk.Toplevel(root)
     credits_window.title("Credits")
     credits_window.geometry("400x300")
     credits_window.configure(bg="#060606")
 
-    
     style = ttk.Style()
     style.configure('my.TFrame', font=("Helvetica", 12), foreground="white", background="#060606", borderwidth=0)
-    # Using tk.Frame with black background
     frame = ttk.Frame(credits_window, style='my.TFrame', padding=20)
     frame.place(relx=0.5, rely=0.5, anchor="center")
 
-    # Developers list with tk.Label for custom colors
     developers = ["Fabian Concha", "Justo Perez", "Abimael Ruiz", "Giulia Naval", "Sebastian Postigo", "Gabriel Valdivia"]
     for dev in developers:
         dev_label = ttk.Label(frame, text=dev, font=("Helvetica", 12), foreground="white", background='#060606')
         dev_label.pack(anchor="w", padx=10, pady=2)
 
-    # Botón de cerrar ventana
-    close_button = tk.Button(frame, text="Cerrar", command=credits_window.destroy,  bg='#060606',
-                fg='#b00000')
+    close_button = tk.Button(frame, text="Cerrar", command=credits_window.destroy, bg='#060606', fg='#b00000')
     close_button.pack(pady=(20, 0))
 
-
 # Function to show extra project information
-
 def show_info():
     messagebox.showinfo("Project Information", "This project uses OpenCV to capture video and estimate body poses.")
 
-# Función para dibujar la silueta cargada
-def draw_silhouette(frame):
-    pts = np.loadtxt("shapeCoords/sil01.txt", dtype=int)
+# Función para dibujar la silueta cargada con color dinámico
+def draw_silhouette(frame, shape_file, match_percentage):
+    color = (0, 255, 0) if match_percentage >= 70 else (0, 0, 255)
+    pts = np.loadtxt(shape_file, dtype=int)
     pts = pts.reshape((-1, 1, 2))
-    cv2.polylines(frame, [pts], isClosed=True, color=(0, 0, 255), thickness=5)  # Dibuja en rojo
-    mask = np.zeros(frame.shape[:2], dtype=np.uint8)  # Máscara en escala de grises
+    cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=5)
+    mask = np.zeros(frame.shape[:2], dtype=np.uint8)
     cv2.fillPoly(mask, [pts], 255)
     return pts, mask
 
@@ -61,7 +55,6 @@ def draw_silhouette(frame):
 def calculate_points_inside_shape(pts_silhouette, points):
     inside_count = 0
     for point in points:
-        # Utilizamos pointPolygonTest para comprobar si el punto está dentro (resultado > 0)
         result = cv2.pointPolygonTest(pts_silhouette, (point[0], point[1]), False)
         if result >= 0:
             inside_count += 1
@@ -69,46 +62,34 @@ def calculate_points_inside_shape(pts_silhouette, points):
 
 # Función que inicia el código de tracking al hacer clic en Start
 def iniciar_deteccion():
-    root.destroy()  # Cerrar el menú principal
-
-    # Inicializar MediaPipe para la detección de poses
+    root.destroy()
     mp_drawing = mp.solutions.drawing_utils
     mp_pose = mp.solutions.pose
-
-    # Iniciar la captura de video desde la cámara web
     cap = cv2.VideoCapture(0)
 
-    # Configuración del modelo de pose
-    with mp_pose.Pose(static_image_mode=False, 
-                      model_complexity=2, 
-                      enable_segmentation=False,
-                      min_detection_confidence=0.5,
-                      min_tracking_confidence=0.5) as pose:
+    # Lista de archivos de siluetas
+    shape_files = ["shapeCoords/sil01.txt", "shapeCoords/sil02.txt", "shapeCoords/sil03.txt"]
+    shape_file = random.choice(shape_files)
+    start_time = time.time()
+    score = 0
 
-        # Variable para controlar el tiempo de actualización
-        last_update_time = time.time()
+    with mp_pose.Pose(static_image_mode=False, model_complexity=2, enable_segmentation=False,
+                      min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
 
         while cap.isOpened():
-            # Leer el frame de la cámara
             ret, frame = cap.read()
-
             if not ret:
                 print("Error al acceder a la cámara.")
                 break
 
-            # Convertir la imagen de BGR a RGB
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image_rgb.flags.writeable = False  # Marca la imagen como no editable
-
-            # Realizar la detección de la pose
+            image_rgb.flags.writeable = False
             results = pose.process(image_rgb)
-
-            # Marcar la imagen como editable nuevamente
             image_rgb.flags.writeable = True
             image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
 
-            # Dibujar la silueta en el frame
-            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr)
+            if results.pose_landmarks:
+                mp_drawing.draw_landmarks(image_bgr, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
             # Generar puntos a partir de los landmarks de la pose
             points = []
@@ -116,31 +97,57 @@ def iniciar_deteccion():
                 for landmark in results.pose_landmarks.landmark:
                     h, w, _ = image_bgr.shape
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
-                    points.append((cx, cy))  # Guardar las coordenadas de los landmarks
+                    points.append((cx, cy))
 
-            # Comprobar cuántos puntos están dentro de la silueta
+            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr, shape_file, match_percentage=0)
             inside_count = calculate_points_inside_shape(pts_silhouette, points)
-            
-            # Calcular el porcentaje de puntos que están dentro
             total_points = len(points)
-            if total_points > 0:
-                match_percentage = (inside_count / total_points) * 100
-                cv2.putText(image_bgr, f"Coincidencia: {match_percentage:.2f}%", (10, 30), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            match_percentage = (inside_count / total_points) * 100 if total_points > 0 else 0
 
-            # Dibujar los puntos en el frame (para visualización)
-            for point in points:
-                cv2.circle(image_bgr, point, 5, (255, 255, 0), -1)  # Dibuja los puntos en color azul
+            # Dibujar la silueta en el frame con color dinámico según el porcentaje
+            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr, shape_file, match_percentage)
+
+            if match_percentage >= 70:
+                score += 1  # Incrementar puntaje
+
+            # Mostrar el puntaje en la parte inferior izquierda
+            cv2.putText(image_bgr, f"Puntaje: {score}", (10, frame.shape[0] - 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+
+            # Muestra el porcentaje de coincidencia en la pantalla
+            cv2.putText(image_bgr, f"Coincidencia: {match_percentage:.2f}%", (10, 30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+            # Temporizador y cambio de archivo cada 10 segundos
+            elapsed_time = time.time() - start_time
+            countdown = max(0, 10 - int(elapsed_time))
+
+            # Mostrar temporizador centrado en la parte superior
+            timer_text = f"{countdown}s"
+            text_size = cv2.getTextSize(timer_text, cv2.FONT_HERSHEY_SIMPLEX, 2.5, 5)[0]
+            text_x = (frame.shape[1] - text_size[0]) // 2
+            cv2.putText(image_bgr, timer_text, (text_x, 60),
+                        cv2.FONT_HERSHEY_SIMPLEX, 2.5, (0, 0, 255), 5)
+
+            if countdown == 0:
+                shape_file = random.choice(shape_files)
+                start_time = time.time()
 
             cv2.imshow("Hole in the Wall", image_bgr)
 
-            # Presiona 'q' para salir
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-    # Liberar la captura y cerrar ventanas
     cap.release()
     cv2.destroyAllWindows()
+
+# Function to create styled buttons
+def create_button(parent, text, command):
+    style = ttk.Style()
+    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)
+    button = ttk.Button(parent, text=text, command=command, style='my.TButton', width=15)
+    button.pack(pady=5)
+    return button
 
 # Function to create styled buttons
 def create_button(parent, text, command):
