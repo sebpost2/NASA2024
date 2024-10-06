@@ -137,18 +137,17 @@ class MainWindow(QMainWindow):
         self.blink_timer.timeout.connect(self.blink_title)
         self.blink_timer.start(500)
         layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
-        self.start_button = QPushButton("Start", self)
-        self.start_button.setFont(custom_font)
-        self.start_button.clicked.connect(self.on_button_click)
-        layout.addWidget(self.start_button, alignment=Qt.AlignCenter)
-        self.credits_button = QPushButton("Credits", self)
-        self.credits_button.setFont(custom_font)
-        self.credits_button.clicked.connect(self.on_button_click)
-        layout.addWidget(self.credits_button, alignment=Qt.AlignCenter)
-        self.info_button = QPushButton("More Info", self)
-        self.info_button.setFont(custom_font)
-        self.info_button.clicked.connect(self.on_button_click)
-        layout.addWidget(self.info_button, alignment=Qt.AlignCenter)
+
+        # Create a list to hold the buttons
+        self.buttons = []
+        for button_text in ["Start", "Credits", "More Info"]:
+            button = QPushButton(button_text, self)
+            button.setFont(custom_font)
+            button.clicked.connect(self.on_button_click)
+            layout.addWidget(button, alignment=Qt.AlignCenter)
+            self.buttons.append(button)
+            self.create_blinking_effect(button)
+
         image_layout = QHBoxLayout()
         logo_label = QLabel(self)
         logo_pixmap = QPixmap(LOGO_PATH)
@@ -162,6 +161,21 @@ class MainWindow(QMainWindow):
         image_layout.addWidget(team_label, alignment=Qt.AlignCenter)
         layout.addLayout(image_layout)
 
+    def create_blinking_effect(self, button):
+        # Create an opacity effect for the button text
+        opacity_effect = QGraphicsOpacityEffect()
+        button.setGraphicsEffect(opacity_effect)
+
+        # Create a timer for blinking
+        blink_timer = QTimer(self)
+        blink_timer.timeout.connect(lambda: self.blink_button_text(opacity_effect))
+        blink_timer.start(500)  # Adjust the blinking interval here
+
+    def blink_button_text(self, opacity_effect):
+        current_opacity = opacity_effect.opacity()
+        new_opacity = 1.0 if current_opacity == 0.0 else 0.0
+        opacity_effect.setOpacity(new_opacity)
+
     def blink_title(self):
         current_opacity = self.opacity_effect.opacity()
         self.opacity_effect.setOpacity(1.0 if current_opacity == 0.0 else 0.0)
@@ -169,16 +183,17 @@ class MainWindow(QMainWindow):
     def on_button_click(self):
         self.button_sound.play()
         clicked_button = self.sender()
-        if clicked_button == self.start_button:
+        if clicked_button == self.buttons[0]:  # Start button
             start_detection()
-        elif clicked_button == self.credits_button:
+        elif clicked_button == self.buttons[1]:  # Credits button
             show_credits()
-        elif clicked_button == self.info_button:
+        elif clicked_button == self.buttons[2]:  # More Info button
             show_info()
 
     def closeEvent(self, event):
-        for proc in subprocess._active:
-            proc.terminate()
+        if subprocess._active is not None:  # Check if _active is not None
+            for proc in subprocess._active:
+                proc.terminate()
         event.accept()
 
 app = QApplication(sys.argv)
