@@ -1,209 +1,197 @@
-import sys
+import tkinter as tk
+from tkinter import messagebox
+import ttkbootstrap as ttk
+from PIL import Image, ImageTk, ImageDraw
 import cv2
 import mediapipe as mp
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog
-from PySide6.QtCore import Qt, QThread, Signal, QRect  # Agregar QRect aquí
-from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
+import numpy as np
+import time
 
-# Rutas de la fuente y la imagen
-FONT_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/Sixtyfour_Convergence/static/SixtyfourConvergence-Regular.ttf"
-LOGO_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/logo.jpg"
-BACKGROUND_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/bckgrnd.jpg"
-
-# Función para redondear las esquinas de un pixmap
-def round_pixmap(pixmap, radius):
-    rounded_pixmap = QPixmap(pixmap.size())
-    rounded_pixmap.fill(Qt.transparent)
-
-    painter = QPainter(rounded_pixmap)
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setPen(QPen(Qt.transparent))
-
-    rect = QRect(0, 0, pixmap.width(), pixmap.height())
-    painter.drawRoundedRect(rect, radius, radius)
-    painter.setClipRect(rect)
-    painter.drawPixmap(0, 0, pixmap)
-    painter.end()
-
-    return rounded_pixmap
-
-# Hilo para la detección de poses
-class PoseDetectionThread(QThread):
-    finished = Signal()
-
-    def run(self):
-        # Inicializar MediaPipe para la detección de poses
-        mp_drawing = mp.solutions.drawing_utils
-        mp_pose = mp.solutions.pose
-
-        # Iniciar la captura de video desde la cámara web
-        cap = cv2.VideoCapture(0)
-
-        with mp_pose.Pose(static_image_mode=False, 
-                          model_complexity=2, 
-                          enable_segmentation=False,
-                          min_detection_confidence=0.5,
-                          min_tracking_confidence=0.5) as pose:
-
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                # Convertir la imagen de BGR a RGB
-                image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image.flags.writeable = False  # Marca la imagen como no editable
-
-                # Realizar la detección de la pose
-                results = pose.process(image)
-
-                # Marcar la imagen como editable nuevamente
-                image.flags.writeable = True
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-                # Dibujar las anotaciones de la pose en la imagen
-                if results.pose_landmarks:
-                    for landmark in results.pose_landmarks.landmark:
-                        h, w, _ = image.shape
-                        cx, cy = int(landmark.x * w), int(landmark.y * h)
-                        cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
-
-                    mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-
-                # Mostrar el video en tiempo real
-                cv2.imshow('Pose Estimation', image)
-
-                if cv2.waitKey(5) & 0xFF == 27:  # Presiona 'Esc' para salir
-                    break
-
-        # Liberar la captura y cerrar ventanas
-        cap.release()
-        cv2.destroyAllWindows()
-        self.finished.emit()
+# Function to round image corners
+def round_image_corners(image, radius):
+    mask = Image.new('L', image.size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, image.size[0], image.size[1]), radius=radius, fill=255)
+    rounded_image = Image.new('RGBA', image.size)
+    rounded_image.paste(image, (0, 0), mask)
+    return rounded_image
 
 # Función para mostrar los créditos del proyecto
+
 def show_credits():
-    credits_dialog = QDialog()
-    credits_dialog.setWindowTitle("Credits")
-    credits_dialog.setGeometry(400, 400, 300, 200)
-    
-    layout = QVBoxLayout()
-    
-    credits = ["Fabian Concha", "Justo Perez", "Abimael Ruiz", "Sebastian Postigo", "Gabriel Valdivia"]
-    for credit in credits:
-        label = QLabel(credit)
-        label.setFont(QFont("Arial", 12))
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-    
-    close_button = QPushButton("Close")
-    close_button.clicked.connect(credits_dialog.close)
-    layout.addWidget(close_button)
-    
-    credits_dialog.setLayout(layout)
-    credits_dialog.exec()
+    credits_window = tk.Toplevel(root)
+    credits_window.title("Credits")
+    credits_window.geometry("400x300")
+    credits_window.configure(bg="#060606")
 
-# Función para mostrar información adicional del proyecto
+    
+    style = ttk.Style()
+    style.configure('my.TFrame', font=("Helvetica", 12), foreground="white", background="#060606", borderwidth=0)
+    # Using tk.Frame with black background
+    frame = ttk.Frame(credits_window, style='my.TFrame', padding=20)
+    frame.place(relx=0.5, rely=0.5, anchor="center")
+
+    # Developers list with tk.Label for custom colors
+    developers = ["Fabian Concha", "Justo Perez", "Abimael Ruiz", "Giulia Naval", "Sebastian Postigo", "Gabriel Valdivia"]
+    for dev in developers:
+        dev_label = ttk.Label(frame, text=dev, font=("Helvetica", 12), foreground="white", background='#060606')
+        dev_label.pack(anchor="w", padx=10, pady=2)
+
+    # Botón de cerrar ventana
+    close_button = tk.Button(frame, text="Cerrar", command=credits_window.destroy,  bg='#060606',
+                fg='#b00000')
+    close_button.pack(pady=(20, 0))
+
+
+# Function to show extra project information
+
 def show_info():
-    info_dialog = QDialog()
-    info_dialog.setWindowTitle("More Info")
-    info_dialog.setGeometry(400, 400, 300, 100)
+    messagebox.showinfo("Project Information", "This project uses OpenCV to capture video and estimate body poses.")
 
-    layout = QVBoxLayout()
+# Función para dibujar la silueta cargada
+def draw_silhouette(frame):
+    pts = np.loadtxt("shapeCoords/sil01.txt", dtype=int)
+    pts = pts.reshape((-1, 1, 2))
+    cv2.polylines(frame, [pts], isClosed=True, color=(0, 0, 255), thickness=5)  # Dibuja en rojo
+    mask = np.zeros(frame.shape[:2], dtype=np.uint8)  # Máscara en escala de grises
+    cv2.fillPoly(mask, [pts], 255)
+    return pts, mask
 
-    info_label = QLabel("This project uses OpenCV and MediaPipe for pose detection.")
-    info_label.setFont(QFont("Arial", 10))
-    info_label.setAlignment(Qt.AlignCenter)
-    layout.addWidget(info_label)
+# Función para calcular el porcentaje de puntos dentro de la silueta
+def calculate_points_inside_shape(pts_silhouette, points):
+    inside_count = 0
+    for point in points:
+        # Utilizamos pointPolygonTest para comprobar si el punto está dentro (resultado > 0)
+        result = cv2.pointPolygonTest(pts_silhouette, (point[0], point[1]), False)
+        if result >= 0:
+            inside_count += 1
+    return inside_count
 
-    close_button = QPushButton("Close")
-    close_button.clicked.connect(info_dialog.close)
-    layout.addWidget(close_button)
+# Función que inicia el código de tracking al hacer clic en Start
+def iniciar_deteccion():
+    root.destroy()  # Cerrar el menú principal
 
-    info_dialog.setLayout(layout)
-    info_dialog.exec()
+    # Inicializar MediaPipe para la detección de poses
+    mp_drawing = mp.solutions.drawing_utils
+    mp_pose = mp.solutions.pose
 
-# Función que se ejecuta al hacer clic en el botón "Start"
-def start_detection():
-    print("Starting detection...")
-    # Ocultar la ventana principal
-    window.hide()
-    # Crear y ejecutar el hilo de detección
-    pose_thread = PoseDetectionThread()
-    pose_thread.start()
-    pose_thread.finished.connect(window.show)  # Mostrar la ventana principal al terminar el hilo
+    # Iniciar la captura de video desde la cámara web
+    cap = cv2.VideoCapture(0)
 
-# Clase principal para la interfaz
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super(MainWindow, self).__init__()
-        self.setWindowTitle("Galactic Games")
-        self.setGeometry(100, 100, 800, 600)
+    # Configuración del modelo de pose
+    with mp_pose.Pose(static_image_mode=False, 
+                      model_complexity=2, 
+                      enable_segmentation=False,
+                      min_detection_confidence=0.5,
+                      min_tracking_confidence=0.5) as pose:
 
-        # Establecer la fuente personalizada
-        font_id = QFontDatabase.addApplicationFont(FONT_PATH)
-        if font_id == -1:
-            print("Error: No se pudo cargar la fuente personalizada. Usando fuente predeterminada.")
-            custom_font = QFont("Arial", 24)
-            family = ["Arial"]
-        else:
-            family = QFontDatabase.applicationFontFamilies(font_id)
-            if family:
-                custom_font = QFont(family[0], 24)
-            else:
-                print("Error: No se encontró ninguna familia de fuentes. Usando fuente predeterminada.")
-                custom_font = QFont("Arial", 24)
-                family = ["Arial"]
+        # Variable para controlar el tiempo de actualización
+        last_update_time = time.time()
 
-        # Crear un widget central
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
+        while cap.isOpened():
+            # Leer el frame de la cámara
+            ret, frame = cap.read()
 
-        # Crear un layout vertical
-        layout = QVBoxLayout(central_widget)
+            if not ret:
+                print("Error al acceder a la cámara.")
+                break
 
-        # Establecer imagen de fondo
-        palette = QPalette()
-        background = QPixmap(BACKGROUND_PATH)
-        palette.setBrush(QPalette.Window, QBrush(background.scaled(self.size(), Qt.IgnoreAspectRatio)))
-        self.setPalette(palette)
+            # Convertir la imagen de BGR a RGB
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image_rgb.flags.writeable = False  # Marca la imagen como no editable
 
-        # Título principal
-        title_label = QLabel("Galactic Games: \nFun in a Microgravity \nEnvironment!", self)
-        title_label.setFont(QFont(family[0], 36))
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
+            # Realizar la detección de la pose
+            results = pose.process(image_rgb)
 
-        # Botón "Start"
-        start_button = QPushButton("Start", self)
-        start_button.setFont(QFont(family[0], 14))
-        start_button.setFixedWidth(120)
-        start_button.clicked.connect(start_detection)
-        layout.addWidget(start_button, alignment=Qt.AlignCenter)
+            # Marcar la imagen como editable nuevamente
+            image_rgb.flags.writeable = True
+            image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
 
-        # Botón "Credits"
-        credits_button = QPushButton("Credits", self)
-        credits_button.setFont(QFont(family[0], 14))
-        credits_button.setFixedWidth(170)
-        credits_button.clicked.connect(show_credits)
-        layout.addWidget(credits_button, alignment=Qt.AlignCenter)
+            # Dibujar la silueta en el frame
+            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr)
 
-        # Botón "More Info"
-        info_button = QPushButton("More Info", self)
-        info_button.setFont(QFont(family[0], 14))
-        info_button.setFixedWidth(190)
-        info_button.clicked.connect(show_info)
-        layout.addWidget(info_button, alignment=Qt.AlignCenter)
+            # Generar puntos a partir de los landmarks de la pose
+            points = []
+            if results.pose_landmarks:
+                for landmark in results.pose_landmarks.landmark:
+                    h, w, _ = image_bgr.shape
+                    cx, cy = int(landmark.x * w), int(landmark.y * h)
+                    points.append((cx, cy))  # Guardar las coordenadas de los landmarks
 
-        # Añadir la imagen debajo de los botones
-        logo_label = QLabel(self)
-        logo_pixmap = QPixmap(LOGO_PATH)
-        rounded_logo_pixmap = round_pixmap(logo_pixmap, 40)
-        logo_label.setPixmap(rounded_logo_pixmap.scaled(200, 200, Qt.KeepAspectRatio))
-        layout.addWidget(logo_label, alignment=Qt.AlignCenter)
+            # Comprobar cuántos puntos están dentro de la silueta
+            inside_count = calculate_points_inside_shape(pts_silhouette, points)
+            
+            # Calcular el porcentaje de puntos que están dentro
+            total_points = len(points)
+            if total_points > 0:
+                match_percentage = (inside_count / total_points) * 100
+                cv2.putText(image_bgr, f"Coincidencia: {match_percentage:.2f}%", (10, 30), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-# Iniciar la aplicación
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-sys.exit(app.exec())
+            # Dibujar los puntos en el frame (para visualización)
+            for point in points:
+                cv2.circle(image_bgr, point, 5, (255, 255, 0), -1)  # Dibuja los puntos en color azul
+
+            cv2.imshow("Hole in the Wall", image_bgr)
+
+            # Presiona 'q' para salir
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    # Liberar la captura y cerrar ventanas
+    cap.release()
+    cv2.destroyAllWindows()
+
+# Function to create styled buttons
+def create_button(parent, text, command):
+    style = ttk.Style()
+    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)
+    button = ttk.Button(parent, text=text, command=command, style='my.TButton', width=15)
+    button.pack(pady=5)
+    return button
+
+# Function to show the main menu
+def show_main_menu():
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    bg_image = Image.open("/home/sebpost02/Documents/NASA2024/NASA2024/bckgrnd.jpg")
+    bg_image = bg_image.resize((1000, 700), Image.LANCZOS)
+    bg_image_tk = ImageTk.PhotoImage(bg_image)
+    background_label = tk.Label(root, image=bg_image_tk)
+    background_label.image = bg_image_tk
+    background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+    title_label = ttk.Label(root, text="Galactic Games", font=("Sixtyfour Convergence", 35), foreground="#663399")
+    title_label.pack()
+    title_label2 = ttk.Label(root, text="Fun in a Microgravity", font=("Sixtyfour Convergence", 40), foreground="#663399")
+    title_label2.pack()
+    title_label3 = ttk.Label(root, text="Environment!", font=("Sixtyfour Convergence", 40), foreground="#663399")
+    title_label3.pack()
+
+    button_frame = ttk.Frame(root)
+    button_frame.pack(pady=20)
+    create_button(button_frame, "Start", iniciar_deteccion)
+    create_button(button_frame, "More Info.", show_info)
+    create_button(button_frame, "Credits", show_credits)
+
+    img_path = "/home/sebpost02/Documents/NASA2024/NASA2024/logo.jpg"
+    img = Image.open(img_path)
+    img = img.resize((200, 200), Image.LANCZOS)
+    img = round_image_corners(img, radius=30)
+    img_tk = ImageTk.PhotoImage(img)
+    image_label = ttk.Label(root, image=img_tk)
+    image_label.image = img_tk
+    image_label.pack(pady=20)
+
+# Create GUI
+def create_gui():
+    global root
+    root = ttk.Window(themename="superhero")
+    root.title("Galactic Games: Fun in a Microgravity Environment!")
+    root.geometry("1000x700")
+    show_main_menu()
+    root.mainloop()
+
+if __name__ == "__main__":
+    create_gui()
