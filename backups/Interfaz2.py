@@ -1,5 +1,4 @@
 import sys
-import subprocess
 import cv2
 import mediapipe as mp
 from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QSizePolicy, QSpacerItem
@@ -29,17 +28,59 @@ def round_pixmap(pixmap, radius):
 
     return rounded_pixmap
 
-# Función que se ejecuta al hacer clic en el botón "Start"
-def start_detection():
-    print("Starting detection...")
-    # Ocultar la ventana principal
-    window.hide()
-    
-    # Ejecutar el archivo Tracking2.py
-    subprocess.Popen([sys.executable, "Tracking.py"])
-    
-    # Mostrar la ventana principal nuevamente al terminar el hilo
-    window.show()
+# Hilo para la detección de poses
+class PoseDetectionThread(QThread):
+    finished = Signal()
+
+    def run(self):
+        # Inicializar MediaPipe para la detección de poses
+        mp_drawing = mp.solutions.drawing_utils
+        mp_pose = mp.solutions.pose
+
+        # Iniciar la captura de video desde la cámara web
+        cap = cv2.VideoCapture(0)
+
+        with mp_pose.Pose(static_image_mode=False, 
+                          model_complexity=2, 
+                          enable_segmentation=False,
+                          min_detection_confidence=0.5,
+                          min_tracking_confidence=0.5) as pose:
+
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Convertir la imagen de BGR a RGB
+                image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image.flags.writeable = False  # Marca la imagen como no editable
+
+                # Realizar la detección de la pose
+                results = pose.process(image)
+
+                # Marcar la imagen como editable nuevamente
+                image.flags.writeable = True
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+                # Dibujar las anotaciones de la pose en la imagen
+                if results.pose_landmarks:
+                    for landmark in results.pose_landmarks.landmark:
+                        h, w, _ = image.shape
+                        cx, cy = int(landmark.x * w), int(landmark.y * h)
+                        cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
+
+                    mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+                # Mostrar el video en tiempo real
+                cv2.imshow('Pose Estimation', image)
+
+                if cv2.waitKey(5) & 0xFF == 27:  # Presiona 'Esc' para salir
+                    break
+
+        # Liberar la captura y cerrar ventanas
+        cap.release()
+        cv2.destroyAllWindows()
+        self.finished.emit()
 
 # Función para mostrar los créditos del proyecto
 def show_credits():
@@ -82,6 +123,16 @@ def show_info():
 
     info_dialog.setLayout(layout)
     info_dialog.exec()
+
+# Función que se ejecuta al hacer clic en el botón "Start"
+def start_detection():
+    print("Starting detection...")
+    # Ocultar la ventana principal
+    window.hide()
+    # Crear y ejecutar el hilo de detección
+    pose_thread = PoseDetectionThread()
+    pose_thread.start()
+    pose_thread.finished.connect(window.show)  # Mostrar la ventana principal al terminar el hilo
 
 # Clase principal para la interfaz
 class MainWindow(QMainWindow):
