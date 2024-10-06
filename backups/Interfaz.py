@@ -43,7 +43,7 @@ def show_info():
 
 # Función para dibujar la silueta cargada con color dinámico
 def draw_silhouette(frame, shape_file, match_percentage):
-    color = (0, 255, 0) if match_percentage >= 70 else (0, 0, 255)
+    color = (0, 255, 0) if match_percentage >= 50 else (0, 0, 255)  # Cambiar a verde al 50%
     pts = np.loadtxt(shape_file, dtype=int)
     pts = pts.reshape((-1, 1, 2))
     cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=5)
@@ -72,6 +72,7 @@ def iniciar_deteccion():
     shape_file = random.choice(shape_files)
     start_time = time.time()
     score = 0
+    score_incremented = False  # Variable para controlar el incremento del puntaje
 
     with mp_pose.Pose(static_image_mode=False, model_complexity=2, enable_segmentation=False,
                       min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
@@ -81,6 +82,9 @@ def iniciar_deteccion():
             if not ret:
                 print("Error al acceder a la cámara.")
                 break
+
+            # Invertir horizontalmente la imagen de la cámara
+            frame = cv2.flip(frame, 1)
 
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image_rgb.flags.writeable = False
@@ -107,8 +111,20 @@ def iniciar_deteccion():
             # Dibujar la silueta en el frame con color dinámico según el porcentaje
             pts_silhouette, silhouette_mask = draw_silhouette(image_bgr, shape_file, match_percentage)
 
-            if match_percentage >= 70:
+            # Incrementar puntaje solo una vez por pose
+            if match_percentage >= 50 and not score_incremented:
+                # Mostrar texto de éxito antes de congelar la pantalla
+                cv2.putText(image_bgr, "SUCCESS", (frame.shape[1] // 2 - 100, frame.shape[0] // 2),
+                            cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 5)  # Color amarillo
+                cv2.imshow("Hole in the Wall", image_bgr)  # Mostrar imagen con el texto
+                cv2.waitKey(2000)  # Esperar 2 segundos
+
                 score += 1  # Incrementar puntaje
+                score_incremented = True  # Marcar que se ha incrementado el puntaje
+                shape_file = random.choice(shape_files)  # Cambiar a una nueva silueta
+
+            if match_percentage < 50:
+                score_incremented = False  # Reiniciar el estado si no hay coincidencia
 
             # Mostrar el puntaje en la parte inferior izquierda
             cv2.putText(image_bgr, f"Puntaje: {score}", (10, frame.shape[0] - 20),
@@ -141,13 +157,6 @@ def iniciar_deteccion():
     cap.release()
     cv2.destroyAllWindows()
 
-# Function to create styled buttons
-def create_button(parent, text, command):
-    style = ttk.Style()
-    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)
-    button = ttk.Button(parent, text=text, command=command, style='my.TButton', width=15)
-    button.pack(pady=5)
-    return button
 
 # Function to create styled buttons
 def create_button(parent, text, command):
