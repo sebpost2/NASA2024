@@ -36,7 +36,7 @@ def start_detection():
     window.hide()
     
     # Ejecutar el archivo Tracking2.py
-    subprocess.Popen([sys.executable, "backups\Tracking2.py"])
+    subprocess.Popen([sys.executable, "Tracking.py"])
     
     # Mostrar la ventana principal nuevamente al terminar el hilo
     window.show()
