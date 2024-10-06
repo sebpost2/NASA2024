@@ -1,52 +1,76 @@
-from PIL import Image, ImageTk  # Asegúrate de que esta línea esté presente
-import tkinter as tk
-from tkinter import messagebox
-import ttkbootstrap as ttk
+from PySide6.QtWidgets import QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QMessageBox
+from PySide6.QtGui import QPixmap, QPalette, QBrush
 from tracking import iniciar_deteccion
+import os
 
-def show_credits():
-    credits_window = tk.Toplevel(root)
-    credits_window.title("Credits")
-    credits_window.geometry("400x300")
-    credits_window.configure(bg="#060606")
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Galactic Pose Challenge")
+        self.setGeometry(100, 100, 1000, 700)
+        self.setStyleSheet("background-color: #000033;")
+        
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        
+        self.layout = QVBoxLayout(self.central_widget)
+        self.show_main_menu()
 
-    style = ttk.Style()
-    style.configure('my.TFrame', font=("Helvetica", 12), foreground="white", background="#060606", borderwidth=0)
-    frame = ttk.Frame(credits_window, style='my.TFrame', padding=20)
-    frame.place(relx=0.5, rely=0.5, anchor="center")
+    def show_main_menu(self):
+        # Limpiar el layout
+        for i in reversed(range(self.layout.count())): 
+            widget = self.layout.itemAt(i).widget()
+            if widget is not None: 
+                widget.deleteLater()
 
-    developers = ["Fabian Concha", "Justo Perez", "Abimael Ruiz", "Giulia Naval", "Sebastian Postigo", "Gabriel Valdivia"]
-    for dev in developers:
-        dev_label = ttk.Label(frame, text=dev, font=("Helvetica", 12), foreground="white", background='#060606')
-        dev_label.pack(anchor="w", padx=10, pady=2)
+        # Establecer imagen de fondo
+        bg_image_path = "Images/bckgrnd.jpg"
+        if os.path.exists(bg_image_path):
+            bg_image = QPixmap(bg_image_path)
+            self.setFixedSize(1000, 700)
+            background_label = QLabel(self)
+            background_label.setPixmap(bg_image.scaled(1000, 700))
+            self.layout.addWidget(background_label)
 
-    close_button = tk.Button(frame, text="Cerrar", command=credits_window.destroy, bg='#060606', fg='#b00000')
-    close_button.pack(pady=(20, 0))
+        # Título
+        title_label = QLabel("Galactic Pose Challenge")
+        title_label.setStyleSheet("font-size: 24px; color: white;")
+        self.layout.addWidget(title_label)
 
-def show_info():
-    messagebox.showinfo("Project Information", "This project uses OpenCV to capture video and estimate body poses.")
+        # Botones
+        start_button = self.create_button("Iniciar", iniciar_deteccion)
+        credits_button = self.create_button("Créditos", self.show_credits)
+        info_button = self.create_button("Información", self.show_info)
 
-def show_main_menu(root):
-    for widget in root.winfo_children():
-        widget.destroy()
+        self.layout.addWidget(start_button)
+        self.layout.addWidget(credits_button)
+        self.layout.addWidget(info_button)
 
-    bg_image = Image.open("Images/bckgrnd.jpg")  # Actualiza la ruta aquí
-    bg_image = bg_image.resize((1000, 700), Image.LANCZOS)
-    bg_image_tk = ImageTk.PhotoImage(bg_image)
-    background_label = tk.Label(root, image=bg_image_tk)
-    background_label.image = bg_image_tk
-    background_label.place(x=0, y=0, relwidth=1, relheight=1)
+    def create_button(self, text, callback):
+        button = QPushButton(text)
+        button.setStyleSheet("font-size: 14px; color: white; background-color: #000033;")
+        button.clicked.connect(callback)
+        return button
 
-    title_label = ttk.Label(root, text="Galactic Pose Challenge", font=("Helvetica", 24), foreground="white", background="#000033")
-    title_label.pack(pady=(20, 0))
+    def show_credits(self):
+        credits_window = QDialog(self)
+        credits_window.setWindowTitle("Créditos")
+        credits_window.setGeometry(100, 100, 400, 300)
+        credits_window.setStyleSheet("background-color: #060606;")
 
-    start_button = create_button(root, "Iniciar", iniciar_deteccion)
-    credits_button = create_button(root, "Créditos", show_credits)
-    info_button = create_button(root, "Información", show_info)
+        layout = QVBoxLayout(credits_window)
 
-def create_button(parent, text, command):
-    style = ttk.Style()
-    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)
-    button = ttk.Button(parent, text=text, command=command, style='my.TButton', width=15)
-    button.pack(pady=5)
-    return button
+        developers = ["Fabian Concha", "Justo Perez", "Abimael Ruiz", "Giulia Naval", "Sebastian Postigo", "Gabriel Valdivia"]
+        for dev in developers:
+            dev_label = QLabel(dev)
+            dev_label.setStyleSheet("color: white; font-size: 12px;")
+            layout.addWidget(dev_label)
+
+        close_button = QPushButton("Cerrar")
+        close_button.clicked.connect(credits_window.accept)
+        layout.addWidget(close_button)
+
+        credits_window.exec()
+
+    def show_info(self):
+        QMessageBox.information(self, "Información del Proyecto", "Este proyecto utiliza OpenCV para capturar video y estimar poses corporales.")
