@@ -1,8 +1,9 @@
 import sys
 import subprocess
 import cv2
+import fitz 
 import mediapipe as mp
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QSizePolicy, QSpacerItem, QGraphicsOpacityEffect
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QDialog, QHBoxLayout, QSizePolicy, QSpacerItem, QGraphicsOpacityEffect, QScrollArea
 from PySide6.QtCore import Qt, QTimer, QRect
 from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
 
@@ -11,6 +12,85 @@ FONT_PATH = "Sixtyfour_Convergence/static/SixtyfourConvergence-Regular.ttf"
 LOGO_PATH = "Images/logo.jpg"
 TEAM_LOGO_PATH = "Images/team.png"
 BACKGROUND_PATH = "Images/bckgrnd.jpg"
+PDF_PATH = "C:/Users/Usuario/Desktop/Nasa-SpaceApp/NASA2024/Images/info.pdf"
+
+class PDFViewer(QDialog):
+    def __init__(self, pdf_path):
+        super().__init__()
+        self.setWindowTitle("More Info")
+        self.setGeometry(100, 100, 800, 600)
+
+        # Layout principal
+        self.layout = QVBoxLayout(self)
+
+        # Crear un QScrollArea para permitir el desplazamiento
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.layout.addWidget(self.scroll_area)
+
+        # Crear un widget para contener las imágenes del PDF
+        self.pdf_widget = QWidget()
+        self.pdf_layout = QVBoxLayout(self.pdf_widget)
+
+        # Inicializar variables para el zoom
+        self.zoom_level = 1.0  # Nivel de zoom
+        self.pdf_images = []  # Lista para guardar las imágenes del PDF
+
+        # Cargar el PDF y renderizar las páginas
+        self.load_pdf(pdf_path)
+
+        # Establecer el widget en el QScrollArea
+        self.scroll_area.setWidget(self.pdf_widget)
+
+        # Botones de zoom
+        zoom_in_button = QPushButton("Zoom In")
+        zoom_out_button = QPushButton("Zoom Out")
+        close_button = QPushButton("Close")
+
+        zoom_in_button.clicked.connect(self.zoom_in)
+        zoom_out_button.clicked.connect(self.zoom_out)
+        close_button.clicked.connect(self.close)
+
+        # Layout para los botones
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(zoom_in_button)
+        button_layout.addWidget(zoom_out_button)
+        button_layout.addWidget(close_button)
+
+        self.layout.addLayout(button_layout)
+
+    def load_pdf(self, pdf_path):
+        doc = fitz.open(pdf_path)
+        for page_num in range(len(doc)):
+            page = doc.load_page(page_num)  # Cargar la página
+            pix = page.get_pixmap()  # Renderizar la página a una imagen
+            img = QPixmap()  # Crear un QPixmap
+            img.loadFromData(pix.tobytes())  # Cargar los datos de imagen en el QPixmap
+            
+            # Aplicar el zoom a la imagen
+            img = img.scaled(img.size() * self.zoom_level, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+            # Crear un QLabel para mostrar la imagen
+            pdf_label = QLabel()
+            pdf_label.setPixmap(img)  # Establecer la imagen en el QLabel
+            pdf_label.setAlignment(Qt.AlignCenter)  # Centrar la imagen
+            self.pdf_layout.addWidget(pdf_label)  # Agregar el QLabel al layout del widget
+
+    def zoom_in(self):
+        self.zoom_level *= 1.2  # Aumentar el nivel de zoom
+        self.update_pdf_images()  # Actualizar las imágenes con el nuevo nivel de zoom
+
+    def zoom_out(self):
+        self.zoom_level /= 1.2  # Disminuir el nivel de zoom
+        self.update_pdf_images()  # Actualizar las imágenes con el nuevo nivel de zoom
+
+    def update_pdf_images(self):
+        # Limpiar el layout actual
+        for i in reversed(range(self.pdf_layout.count())):
+            self.pdf_layout.itemAt(i).widget().deleteLater()
+        
+        # Volver a cargar las imágenes con el nuevo nivel de zoom
+        self.load_pdf(PDF_PATH)
 
 # Función para redondear las esquinas de un pixmap
 def round_pixmap(pixmap, radius):
@@ -59,22 +139,10 @@ def show_credits():
 
 # Función para mostrar información adicional del proyecto
 def show_info():
-    info_dialog = QDialog()
-    info_dialog.setWindowTitle("More Info")
-    info_dialog.setGeometry(400, 400, 300, 100)
+    pdf_viewer = PDFViewer(PDF_PATH)
+    pdf_viewer.exec()
+  
 
-    layout = QVBoxLayout()
-    info_label = QLabel("This project uses OpenCV and MediaPipe for pose detection.")
-    info_label.setFont(QFont("Arial", 10))
-    info_label.setAlignment(Qt.AlignCenter)
-    layout.addWidget(info_label)
-
-    close_button = QPushButton("Close")
-    close_button.clicked.connect(info_dialog.close)
-    layout.addWidget(close_button)
-
-    info_dialog.setLayout(layout)
-    info_dialog.exec()
 
 # Clase principal para la interfaz
 class MainWindow(QMainWindow):
