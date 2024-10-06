@@ -169,8 +169,11 @@ class MainWindow(QMainWindow):
         palette.setBrush(QPalette.Window, QBrush(background.scaled(self.size(), Qt.IgnoreAspectRatio)))
         self.setPalette(palette)
 
+        # Espaciador vertical para separar las imágenes del borde superior
+        layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
         # Título principal
-        title_label = QLabel("Galactic Games: \nFun in a Microgravity \nEnvironment!", self)
+        title_label = QLabel("ASTRO·SHAPE", self)
         title_label.setFont(QFont(family[0], 36))
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
