@@ -17,6 +17,54 @@ PDF_PATH = "Images/info.pdf"
 AUDIO_PATH = "Images/menuSong.mp3"
 BUTTON_SOUND_PATH = "Images/button-pressed-38129.mp3"
 
+class InstructionsScreen(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Instructions")
+        self.setGeometry(100, 100, 1000, 600)  # Asigna el mismo tamaño que la ventana principal
+        layout = QVBoxLayout(self)
+
+        # Texto de instrucciones
+        instructions_text = """
+        Welcome to ASTRO·SHAPE!
+        Please follow the instructions below:
+        - Step back far enough for the camera to detect your full body.
+        - You must match the silhouette that will appear on the screen.
+        - You need at least 70% accuracy for 0.75 seconds to succeed.
+        - Perform the poses shown on the screen within 10 seconds.
+        - The green color indicates you're doing well.
+        - A successfully matched pose will show "Success".
+        - Then, a new pose will appear.
+        THANK YOU FOR USING ASTRO·SHAPE!
+        """
+        
+        # Crear QLabel para mostrar el texto de instrucciones
+        instructions_label = QLabel(instructions_text, self)
+        instructions_label.setFont(QFont("Arial", 20))
+        instructions_label.setAlignment(Qt.AlignCenter)
+        instructions_label.setWordWrap(True)  # Permitir que el texto se ajuste a varias líneas
+        layout.addWidget(instructions_label)
+        
+        # Agregar espaciador vertical
+        layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
+        # Crear botón para continuar
+        continue_button = QPushButton("Continue to Pose Detection", self)
+        continue_button.setFont(QFont("Arial", 18))
+        continue_button.clicked.connect(self.start_detection)  # Conectar el botón con la función que inicia tracking.py
+        layout.addWidget(continue_button, alignment=Qt.AlignCenter)
+
+    def start_detection(self):
+        self.close()  # Cerrar la ventana de instrucciones
+        subprocess.Popen([sys.executable, "tracking.py"])  # Ejecutar tracking.py
+
+
+# You would show this dialog before starting pose detection
+def show_instructions(parent):
+    parent.close()  # Cerrar la ventana del menú
+    instructions_screen = InstructionsScreen(parent)
+    instructions_screen.exec()
+
 class PDFViewer(QDialog):
     def __init__(self, pdf_path):
         super().__init__()
@@ -138,7 +186,7 @@ class MainWindow(QMainWindow):
         self.blink_timer.start(500)
         layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
-        # Create a list to hold the buttons
+        # Crear una lista para contener los botones
         self.buttons = []
         for button_text in ["Start", "Credits", "More Info"]:
             button = QPushButton(button_text, self)
@@ -162,14 +210,14 @@ class MainWindow(QMainWindow):
         layout.addLayout(image_layout)
 
     def create_blinking_effect(self, button):
-        # Create an opacity effect for the button text
+        # Crear un efecto de opacidad para el texto del botón
         opacity_effect = QGraphicsOpacityEffect()
         button.setGraphicsEffect(opacity_effect)
 
-        # Create a timer for blinking
+        # Crear un temporizador para el parpadeo
         blink_timer = QTimer(self)
         blink_timer.timeout.connect(lambda: self.blink_button_text(opacity_effect))
-        blink_timer.start(500)  # Adjust the blinking interval here
+        blink_timer.start(500)  # Ajustar el intervalo de parpadeo aquí
 
     def blink_button_text(self, opacity_effect):
         current_opacity = opacity_effect.opacity()
@@ -184,17 +232,20 @@ class MainWindow(QMainWindow):
         self.button_sound.play()
         clicked_button = self.sender()
         if clicked_button == self.buttons[0]:  # Start button
-            start_detection()
+            show_instructions(self)  # <-- Pasar 'self' como argumento
         elif clicked_button == self.buttons[1]:  # Credits button
             show_credits()
         elif clicked_button == self.buttons[2]:  # More Info button
             show_info()
 
     def closeEvent(self, event):
-        if subprocess._active is not None:  # Check if _active is not None
+        pygame.mixer.music.stop()  # Detener la música al cerrar la ventana
+        # Cerrar cualquier proceso secundario si es necesario
+        if subprocess._active is not None:  # Verificar si _active no es None
             for proc in subprocess._active:
                 proc.terminate()
         event.accept()
+
 
 app = QApplication(sys.argv)
 window = MainWindow()
