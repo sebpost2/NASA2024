@@ -171,7 +171,7 @@ def show_main_menu():
     for widget in root.winfo_children():
         widget.destroy()
 
-    bg_image = Image.open("/home/sebpost02/Documents/NASA2024/NASA2024/bckgrnd.jpg")
+    bg_image = Image.open("Images/bckgrnd.jpg")
     bg_image = bg_image.resize((1000, 700), Image.LANCZOS)
     bg_image_tk = ImageTk.PhotoImage(bg_image)
     background_label = tk.Label(root, image=bg_image_tk)
@@ -191,7 +191,7 @@ def show_main_menu():
     create_button(button_frame, "More Info.", show_info)
     create_button(button_frame, "Credits", show_credits)
 
-    img_path = "/home/sebpost02/Documents/NASA2024/NASA2024/logo.jpg"
+    img_path = "Images/logo.jpg"
     img = Image.open(img_path)
     img = img.resize((200, 200), Image.LANCZOS)
     img = round_image_corners(img, radius=30)
@@ -204,7 +204,7 @@ def show_main_menu():
 def create_gui():
     global root
     root = ttk.Window(themename="superhero")
-    root.title("Galactic Games: Fun in a Microgravity Environment!")
+    root.title("Astro·")
     root.geometry("1000x700")
     show_main_menu()
     root.mainloop()
