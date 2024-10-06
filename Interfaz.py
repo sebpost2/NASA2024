@@ -4,9 +4,11 @@ import ttkbootstrap as ttk
 from PIL import Image, ImageTk, ImageDraw
 import cv2
 import mediapipe as mp
-import torch
+import numpy as np
+import time
+import random
 
-# Función para redondear las esquinas de una imagen
+# Function to round image corners
 def round_image_corners(image, radius):
     mask = Image.new('L', image.size, 0)
     draw = ImageDraw.Draw(mask)
@@ -16,78 +18,130 @@ def round_image_corners(image, radius):
     return rounded_image
 
 # Función para mostrar los créditos del proyecto
-# Función para mostrar los créditos del proyecto
 def show_credits():
-    # Crear una nueva ventana para los créditos
     credits_window = tk.Toplevel(root)
-    credits_window.title("Créditos")
+    credits_window.title("Credits")
     credits_window.geometry("400x300")
-    credits_window.configure(bg="#000033")
-    
-    # Crear un marco con bordes redondeados y fondo agradable
-    frame = ttk.Frame(credits_window, padding=20, bootstyle="primary", relief="solid", borderwidth=3)
+    credits_window.configure(bg="#060606")
+
+    style = ttk.Style()
+    style.configure('my.TFrame', font=("Helvetica", 12), foreground="white", background="#060606", borderwidth=0)
+    frame = ttk.Frame(credits_window, style='my.TFrame', padding=20)
     frame.place(relx=0.5, rely=0.5, anchor="center")
 
-    # Nombres en lista
-    developers = ["Fabian Concha", "Justo Peres", "Abimael Guzman", "Giulia Nava", "Sebastian Postigo", "Gabriel Valdivia"]
+    developers = ["Fabian Concha", "Justo Perez", "Abimael Ruiz", "Giulia Naval", "Sebastian Postigo", "Gabriel Valdivia"]
     for dev in developers:
-        dev_label = ttk.Label(frame, text=dev, font=("Helvetica", 12), foreground="white")
+        dev_label = ttk.Label(frame, text=dev, font=("Helvetica", 12), foreground="white", background='#060606')
         dev_label.pack(anchor="w", padx=10, pady=2)
 
-    # Botón de cerrar ventana
-    close_button = ttk.Button(frame, text="Cerrar", command=credits_window.destroy, bootstyle="danger")
+    close_button = tk.Button(frame, text="Cerrar", command=credits_window.destroy, bg='#060606', fg='#b00000')
     close_button.pack(pady=(20, 0))
 
-
-# Función para mostrar información extra sobre el proyecto
+# Function to show extra project information
 def show_info():
-    messagebox.showinfo("Información del Proyecto", "Este proyecto utiliza OpenCV para capturar video y estimar poses corporales.")
+    messagebox.showinfo("Project Information", "This project uses OpenCV to capture video and estimate body poses.")
+
+# Función para dibujar la silueta cargada con color dinámico
+def draw_silhouette(frame, shape_file, match_percentage):
+    color = (0, 255, 0) if match_percentage >= 70 else (0, 0, 255)
+    pts = np.loadtxt(shape_file, dtype=int)
+    pts = pts.reshape((-1, 1, 2))
+    cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=5)
+    mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+    cv2.fillPoly(mask, [pts], 255)
+    return pts, mask
+
+# Función para calcular el porcentaje de puntos dentro de la silueta
+def calculate_points_inside_shape(pts_silhouette, points):
+    inside_count = 0
+    for point in points:
+        result = cv2.pointPolygonTest(pts_silhouette, (point[0], point[1]), False)
+        if result >= 0:
+            inside_count += 1
+    return inside_count
 
 # Función que inicia el código de tracking al hacer clic en Start
 def iniciar_deteccion():
-    root.destroy()  # Cerrar el menú principal
-
-    # Cargar el modelo YOLOv5
-    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
-    yolo_model.classes = [0]  # Solo detectar personas
-
+    root.destroy()
     mp_drawing = mp.solutions.drawing_utils
     mp_pose = mp.solutions.pose
     cap = cv2.VideoCapture(0)
 
-    with mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3) as pose:
+    # Lista de archivos de siluetas
+    shape_files = ["shapeCoords/sil01.txt", "shapeCoords/sil02.txt", "shapeCoords/sil03.txt"]
+    shape_file = random.choice(shape_files)
+    start_time = time.time()
+    score = 0
+
+    with mp_pose.Pose(static_image_mode=False, model_complexity=2, enable_segmentation=False,
+                      min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
+                print("Error al acceder a la cámara.")
                 break
 
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image.flags.writeable = False
-            result = yolo_model(image)
-            image.flags.writeable = True
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            MARGIN = 10
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image_rgb.flags.writeable = False
+            results = pose.process(image_rgb)
+            image_rgb.flags.writeable = True
+            image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
 
-            for (xmin, ymin, xmax, ymax, confidence, clas) in result.xyxy[0].tolist():
-                crop_image = image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN]
-                crop_rgb = cv2.cvtColor(crop_image, cv2.COLOR_BGR2RGB)
-                results = pose.process(crop_rgb)
+            if results.pose_landmarks:
+                mp_drawing.draw_landmarks(image_bgr, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-                if results.pose_landmarks:
-                    mp_drawing.draw_landmarks(crop_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-                                              mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                                              mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
+            # Generar puntos a partir de los landmarks de la pose
+            points = []
+            if results.pose_landmarks:
+                for landmark in results.pose_landmarks.landmark:
+                    h, w, _ = image_bgr.shape
+                    cx, cy = int(landmark.x * w), int(landmark.y * h)
+                    points.append((cx, cy))
 
-                image[int(ymin) + MARGIN:int(ymax) + MARGIN, int(xmin) + MARGIN:int(xmax) + MARGIN] = crop_image
+            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr, shape_file, match_percentage=0)
+            inside_count = calculate_points_inside_shape(pts_silhouette, points)
+            total_points = len(points)
+            match_percentage = (inside_count / total_points) * 100 if total_points > 0 else 0
 
-            cv2.imshow('Detección de Personas y Pose en Tiempo Real', image)
+            # Dibujar la silueta en el frame con color dinámico según el porcentaje
+            pts_silhouette, silhouette_mask = draw_silhouette(image_bgr, shape_file, match_percentage)
+
+            if match_percentage >= 70:
+                score += 1  # Incrementar puntaje
+
+            # Mostrar el puntaje en la parte inferior izquierda
+            cv2.putText(image_bgr, f"Puntaje: {score}", (10, frame.shape[0] - 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+
+            # Muestra el porcentaje de coincidencia en la pantalla
+            cv2.putText(image_bgr, f"Coincidencia: {match_percentage:.2f}%", (10, 30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+            # Temporizador y cambio de archivo cada 10 segundos
+            elapsed_time = time.time() - start_time
+            countdown = max(0, 10 - int(elapsed_time))
+
+            # Mostrar temporizador centrado en la parte superior
+            timer_text = f"{countdown}s"
+            text_size = cv2.getTextSize(timer_text, cv2.FONT_HERSHEY_SIMPLEX, 2.5, 5)[0]
+            text_x = (frame.shape[1] - text_size[0]) // 2
+            cv2.putText(image_bgr, timer_text, (text_x, 60),
+                        cv2.FONT_HERSHEY_SIMPLEX, 2.5, (0, 0, 255), 5)
+
+            if countdown == 0:
+                shape_file = random.choice(shape_files)
+                start_time = time.time()
+
+            cv2.imshow("Hole in the Wall", image_bgr)
+
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
     cap.release()
     cv2.destroyAllWindows()
 
-# Función para crear botones con estilo
+# Function to create styled buttons
 def create_button(parent, text, command):
     style = ttk.Style()
     style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)
@@ -95,7 +149,15 @@ def create_button(parent, text, command):
     button.pack(pady=5)
     return button
 
-# Función para mostrar el menú principal
+# Function to create styled buttons
+def create_button(parent, text, command):
+    style = ttk.Style()
+    style.configure('my.TButton', font=("Sixtyfour Convergence", 14), foreground="white", background="#000033", borderwidth=0)
+    button = ttk.Button(parent, text=text, command=command, style='my.TButton', width=15)
+    button.pack(pady=5)
+    return button
+
+# Function to show the main menu
 def show_main_menu():
     for widget in root.winfo_children():
         widget.destroy()
@@ -116,7 +178,7 @@ def show_main_menu():
 
     button_frame = ttk.Frame(root)
     button_frame.pack(pady=20)
-    create_button(button_frame, "Start", iniciar_deteccion)  # Inicia la detección
+    create_button(button_frame, "Start", iniciar_deteccion)
     create_button(button_frame, "More Info.", show_info)
     create_button(button_frame, "Credits", show_credits)
 
@@ -129,7 +191,7 @@ def show_main_menu():
     image_label.image = img_tk
     image_label.pack(pady=20)
 
-# Crear la interfaz gráfica
+# Create GUI
 def create_gui():
     global root
     root = ttk.Window(themename="superhero")
