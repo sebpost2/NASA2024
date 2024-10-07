@@ -19,7 +19,7 @@ El objetivo principal es promover la actividad física y la salud mental de los 
 **Instrucciones de Instalación**  
 1. Clona este repositorio:
     ```bash
-    git clone https://github.com/tuusuario/astro-shape.git
+    git clone https://github.com/sebpost2/astro-shape.git
     cd astro-shape
     ```
 
