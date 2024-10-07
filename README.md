@@ -30,5 +30,5 @@ El objetivo principal es promover la actividad física y la salud mental de los 
 
 3. Ejecuta la aplicación:
     ```bash
-    python tracking.py
+    python Interfaz2.py
     ```
