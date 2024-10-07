@@ -1,34 +1,37 @@
-# ASTRO·SHAPE
+# 🚀 **ASTRO·SHAPE** 🌌
 
-**Descripción**  
-*ASTRO·SHAPE* es un juego similar a *Hole in the Wall*, diseñado para ambientes de microgravedad, como estaciones espaciales, utilizando algoritmos de estimación de poses humanas. En el juego, se crea una silueta a partir de coordenadas predefinidas y el objetivo es que los jugadores ajusten su pose para coincidir con la silueta proyectada. El sistema detecta si los jugadores están dentro de los límites de la silueta usando la cámara y algoritmos de visión por computadora.
+**Description**  
+*ASTRO·SHAPE* is a game similar to *Hole in the Wall*, designed for microgravity environments like space stations. It uses human pose estimation algorithms to create a silhouette based on predefined coordinates, and the player's goal is to adjust their pose to match the projected silhouette. The system detects whether players align with the silhouette using computer vision algorithms and a camera.
 
-**Beneficios en Microgravedad**  
-El ambiente de microgravedad permite una mayor flexibilidad en la cantidad de poses que los astronautas pueden realizar, lo que potencia la interacción y la diversión del juego. Además, ayuda a mantener la actividad física, ya que los jugadores deben moverse para ajustar sus poses. Esto es crucial para contrarrestar los efectos de la microgravedad, como la pérdida de masa muscular y densidad ósea.
+**Benefits in Microgravity** 🌍✨  
+Microgravity environments allow for greater flexibility in the variety of poses astronauts can make, boosting the interaction and fun of the game. It helps maintain physical activity as players must move to adjust their poses. This is essential to counteract the effects of microgravity, such as muscle loss and bone density reduction.
 
-**Objetivo del Juego**  
-El objetivo principal es promover la actividad física y la salud mental de los astronautas, mejorando la cohesión del equipo y proporcionando entretenimiento en misiones prolongadas. La naturaleza interactiva y físicamente exigente del juego contribuye a la resiliencia y adaptabilidad de los jugadores en entornos extraterrestres.
+**Game Objective** 🎯  
+The main goal is to promote physical activity and mental well-being for astronauts, enhancing team cohesion and providing entertainment on long missions. The interactive and physically demanding nature of the game contributes to the resilience and adaptability of players in extraterrestrial environments.
 
-**Tecnologías Utilizadas**  
-- *OpenCV*: Para procesamiento de video y manejo de la cámara.
-- *Mediapipe*: Para la detección de poses humanas.
-- *PySide6*: Para la interfaz gráfica.
-- *Numpy*: Para operaciones de procesamiento numérico y visualización.
-- *Pygame*: Para música de fondo y efectos visuales adicionales.
+**Technologies Used** 💻🔧  
+- **OpenCV**: For video processing and camera handling.
+- **Mediapipe**: For human pose detection.
+- **PySide6**: For the graphical interface.
+- **Numpy**: For numerical processing and visualization.
+- **Pygame**: For background music and additional visual effects.
 
-**Instrucciones de Instalación**  
-1. Clona este repositorio:
+**Installation Instructions** 📥
+
+1. Clone this repository:
     ```bash
     git clone https://github.com/sebpost2/NASA2024.git
     cd NASA2024
     ```
 
-2. Instala las dependencias utilizando el archivo `requirements.txt`:
+2. Install the dependencies using the `requirements.txt` file:
     ```bash
     pip install -r requirements.txt
     ```
 
-3. Ejecuta la aplicación:
+3. Run the application:
     ```bash
     python Interfaz2.py
     ```
+
+🎮 Get ready to test your agility and keep astronauts active in space with *ASTRO·SHAPE*! 👾
