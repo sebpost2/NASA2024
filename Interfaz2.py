@@ -8,7 +8,6 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QV
 from PySide6.QtCore import Qt, QTimer, QRect
 from PySide6.QtGui import QFont, QPixmap, QPalette, QBrush, QFontDatabase, QPainter, QPen
 
-# Rutas de la fuente, imágenes
 FONT_PATH = "static/SixtyfourConvergence-Regular.ttf"
 LOGO_PATH = "Images/logo.jpg"
 TEAM_LOGO_PATH = "Images/team.jpg"
@@ -21,10 +20,9 @@ class InstructionsScreen(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Instructions")
-        self.setGeometry(100, 100, 1000, 600)  # Asigna el mismo tamaño que la ventana principal
+        self.setGeometry(100, 100, 1000, 600) 
         layout = QVBoxLayout(self)
 
-        # Texto de instrucciones
         instructions_text = """
         Welcome to ASTRO·SHAPE!
         Please follow the instructions below:
@@ -38,30 +36,25 @@ class InstructionsScreen(QDialog):
         THANK YOU FOR USING ASTRO·SHAPE!
         """
         
-        # Crear QLabel para mostrar el texto de instrucciones
         instructions_label = QLabel(instructions_text, self)
         instructions_label.setFont(QFont("Arial", 20))
         instructions_label.setAlignment(Qt.AlignCenter)
-        instructions_label.setWordWrap(True)  # Permitir que el texto se ajuste a varias líneas
+        instructions_label.setWordWrap(True) 
         layout.addWidget(instructions_label)
         
-        # Agregar espaciador vertical
         layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
-        # Crear botón para continuar
         continue_button = QPushButton("Continue to Pose Detection", self)
         continue_button.setFont(QFont("Arial", 18))
-        continue_button.clicked.connect(self.start_detection)  # Conectar el botón con la función que inicia tracking.py
+        continue_button.clicked.connect(self.start_detection)  
         layout.addWidget(continue_button, alignment=Qt.AlignCenter)
 
     def start_detection(self):
-        self.close()  # Cerrar la ventana de instrucciones
-        subprocess.Popen([sys.executable, "tracking.py"])  # Ejecutar tracking.py
+        self.close()  
+        subprocess.Popen([sys.executable, "tracking.py"])  
 
-
-# You would show this dialog before starting pose detection
 def show_instructions(parent):
-    parent.close()  # Cerrar la ventana del menú
+    parent.close()  
     instructions_screen = InstructionsScreen(parent)
     instructions_screen.exec()
 
@@ -159,7 +152,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle("ASTRO·SHAPE")
-        self.setGeometry(100, 100, 1920, 1080)  # Cambiado a 1920x1080
+        self.setGeometry(100, 100, 1920, 1080) 
         pygame.mixer.init()
         pygame.mixer.music.load(AUDIO_PATH)
         pygame.mixer.music.play(-1)
@@ -186,9 +179,9 @@ class MainWindow(QMainWindow):
         self.blink_timer.start(500)
         layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
-        # Crear una lista para contener los botones
+
         self.buttons = []
-        for button_text in ["Start", "Credits", "More Info", "Exit"]:  # Añadir "Exit" a la lista
+        for button_text in ["Start", "Credits", "More Info", "Exit"]:  
             button = QPushButton(button_text, self)
             button.setFont(custom_font)
             button.clicked.connect(self.on_button_click)
@@ -232,15 +225,15 @@ class MainWindow(QMainWindow):
         button = self.sender()
         self.button_sound.play()
         if button.text() == "Start":
-            pygame.mixer.music.stop()  # Stop the background music
+            pygame.mixer.music.stop()  
             show_instructions(self)
         elif button.text() == "Credits":
             show_credits()
         elif button.text() == "More Info":
             show_info()
         elif button.text() == "Exit":
-            pygame.mixer.music.stop()  # Stop the background music
-            self.close()  # Close the main window
+            pygame.mixer.music.stop()  
+            self.close()  
 
 
 if __name__ == "__main__":
