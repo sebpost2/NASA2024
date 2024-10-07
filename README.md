@@ -19,8 +19,8 @@ El objetivo principal es promover la actividad física y la salud mental de los 
 **Instrucciones de Instalación**  
 1. Clona este repositorio:
     ```bash
-    git clone https://github.com/sebpost2/astro-shape.git
-    cd astro-shape
+    git clone https://github.com/sebpost2/NASA2024.git
+    cd NASA2024
     ```
 
 2. Instala las dependencias utilizando el archivo `requirements.txt`:
