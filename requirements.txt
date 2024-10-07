@@ -3,3 +3,7 @@ numpy
 mediapipe
 PySide6
 pygame
+fitz
+frontend
+tools
+PyMuPDF
